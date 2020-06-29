@@ -1,4 +1,3 @@
-
 # ---------------------------------------------------------------------------
 # watcher.sh - This script will be use to provide our platform deployment watcher.sh architecture
 
@@ -40,65 +39,52 @@
 #
 #echo We processed $step events.
 
+argv0=$(echo "$0" | sed -e 's,\\,/,g')
+basedir=$(dirname "$(readlink "$0" || echo "$argv0")")
+
+case "$(uname -s)" in
+  Linux) basedir=$(dirname "$(readlink -f "$0" || echo "$argv0")");;
+  *CYGWIN*) basedir=`cygpath -w "$basedir"`;;
+esac
+
+BASE=`dirname ${basedir}`
+CWD=$(pwd)
+SCRIPT_DIR=$(cd "${BASE}"; pwd)
+
 TARGET=~/incoming/
 PROCESSED=~/processed/
 
-argv() {
-  arg_name="${2}"
-  for i in ${@:3:$#}; do
-    PARAM=`echo $i | awk -F= '{print $1}'`
-    VALUE=`echo $i | awk -F= '{print $2}'`
-    case ${PARAM} in
-    "$arg_name")
-      #value_=${i}
-      eval "$1=\"${VALUE}\""  # Assign new value.
-    ;;
-    esac
-  done
-}
-
-exists() {
-  arg_name="${2}"
-  for i in ${@:3:$#}; do
-    PARAM=`echo $i | awk -F= '{print $1}'`
-    VALUE=`echo $i | awk -F= '{print $2}'`
-    case ${PARAM} in
-    "$arg_name")
-      eval "$1=true"  # Assign new value.
-    ;;
-    esac
-  done
-}
-
-watch() {
-  echo "Start watching: ${1} ..."
-
-  local target="${1}"
-
-  argv inevent '--event' ${@:1:$#}
-  argv inplugin '--plugin-dir' ${@:1:$#}
-  argv inbundle '--bundle-dir' ${@:1:$#}
-  argv insource '--source' ${@:1:$#}
+watch () {
+  argv inevent '--event' "${@:1:$#}"
+  argv insource '--source' "${@:1:$#}"
+  argv inlog '--log' "${@:1:$#}"
 
   ## inotify watch a directory with timestamps
   #inotifywait --monitor --timefmt '%F %T' --format '%T %w %e' --recursive $1
 
-  #inotifywait -m -r --format '%f' -e modify -e move -e create -e delete /var/www/cloud/data | while read LINE;
-  #do
-  #    php /var/www/cloud/scannner/watcher.php;
-  #done
-
-
   ##https://github.com/rvoicilas/inotify-tools/issues/5
-  #modify,create,delete
+  #https://unix.stackexchange.com/questions/163749/inotifywait-get-old-and-new-file-name-when-renaming
+  #https://unix.stackexchange.com/questions/140679/using-inotify-to-monitor-a-directory-but-not-working-100
 
-  if [ -d "${insource}" ]; then
+  declare -A cache
+  while read event file
+  do
+    colored --cyan "Incoming event: ${event}, file: ${file}"
 
-  inotifywait -m -e ${inevent:-modify,create,delete} -e moved_to --format "%f" ${target} | while read FILENAME
-    do
-      echo Detected $FILENAME, moving and zipping
-      mv "$TARGET/$FILENAME" "$PROCESSED/$FILENAME"
-      gzip "$PROCESSED/$FILENAME"
-    done
-  fi
+#    echo "Incoming event: ${event}, file: ${file}" >> "${inlog}"
+
+#    if [ "$event" = "MOVED_FROM" ]; then
+#      cache[$id]=$file
+#    fi
+#    if [ "$event" = "MOVED_TO" ]; then
+#      if [ "${cache[$id]}" ]; then
+#          echo "processing ..."
+#          unset cache[$id]
+#      else
+#          echo "mismatch for $id"
+#      fi
+#    fi
+
+    exec nuxeoctl --help
+  done < <(inotifywait -r -m -e "${inevent:-modify,create,delete}" --format '%e %f' "${insource}")
 }

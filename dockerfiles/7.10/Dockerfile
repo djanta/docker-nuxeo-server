@@ -2,9 +2,6 @@ FROM djanta/nuxeo-sdk:8.10-develop AS NX810
 
 ARG BUILD_VERSION
 ARG BUILD_HASH
-ARG BUILD_HASH
-ARG BUILD_NX_DATA
-ARG BUILD_NX_LOG
 
 LABEL maintainer="DJANTA, LLC <team.docker@djanta.io>"
 LABEL author="Stanislas Koffi ASSOUTOVI"
@@ -32,14 +29,8 @@ ENV HOME $NUXEO_BASE/server
 ENV NUXEO_TPL_HOME $NUXEO_HOME/templates
 ENV NUXEO_PORT=${PORT:-8080}
 
-ENV NUXEO_RUN=${BUILD_NX_RUN:-/var/run/nuxeo}
-ENV NUXEO_DATA=${BUILD_NX_DATA:-/var/lib/nuxeo/data}
-ENV NUXEO_LOG=${BUILD_NX_LOG:-/var/log/nuxeo}
-
 ENV NUXEO_VARIANT=${VARIANT:-tomcat}
 ENV NUXEO_VERSION=${VERSION:-8.10}
-
-#https://cdn.nuxeo.com/nuxeo-${NUXEO_VERSION}/nuxeo-server-${NUXEO_VERSION}-tomcat.zip
 
 ENV NUXEO_DIST_BASE http://community.nuxeo.com/static/releases/nuxeo-${NUXEO_VERSION}
 ENV NUXEO_MP_BASE http://community.nuxeo.com/static/releases/nuxeo-${NUXEO_VERSION}/mp
@@ -70,9 +61,12 @@ RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
 
 # Protecting writeable directories to support arbitrary User IDs for OpenShift
 # https://docs.openshift.com/container-platform/3.4/creating_images/guidelines.html
-RUN mkdir -p ${NUXEO_DATA} && chown -R 1000:0 ${NUXEO_DATA} && chmod -R g+rwX ${NUXEO_DATA} \
-    && mkdir -p ${NUXEO_LOG} && chown -R 1000:0 ${NUXEO_LOG} && chmod -R g+rwX ${NUXEO_LOG} \
-    && mkdir -p ${NUXEO_RUN} && chown -R 1000:0 ${NUXEO_RUN} && chmod -R g+rwX ${NUXEO_RUN} \
+RUN mkdir -p /var/lib/nuxeo/data \
+    && chown -R 1000:0 /var/lib/nuxeo/data && chmod -R g+rwX /var/lib/nuxeo/data \
+    && mkdir -p /var/log/nuxeo \
+    && chown -R 1000:0 /var/log/nuxeo && chmod -R g+rwX /var/log/nuxeo \
+    && mkdir -p /var/run/nuxeo \
+    && chown -R 1000:0 /var/run/nuxeo && chmod -R g+rwX /var/run/nuxeo \
     && mkdir -p /docker-entrypoint-initnuxeo.d \
     && chown -R 1000:0 /docker-entrypoint-initnuxeo.d && chmod -R g+rwX /docker-entrypoint-initnuxeo.d \
     && chmod g=u /etc/passwd
@@ -85,7 +79,7 @@ COPY packages/.* /packages/
 RUN while read file; \
   do \
     curl -fsSL "${NUXEO_MP_BASE}/${file}.zip" -o /docker-entrypoint-initnuxeo.d/${file}.zip; \
-  done < /packages/.bundle
+  done < /packages/.nuxeo
 
 ENV PATH $NUXEO_HOME/bin:$PATH
 WORKDIR $NUXEO_HOME

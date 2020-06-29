@@ -77,6 +77,7 @@ signal_exit() { # Handle trapped signals
   esac
 }
 
+# shellcheck disable=SC2145
 die() {
     ret=${1}
     shift
@@ -112,7 +113,7 @@ colored() {
 
 argv() {
   arg_name="${2}"
-  for i in ${@:3:$#}; do
+  for i in "${@:3:$#}"; do
     PARAM=`echo $i | awk -F= '{print $1}'`
     VALUE=`echo $i | awk -F= '{print $2}'`
     case ${PARAM} in
@@ -126,7 +127,7 @@ argv() {
 
 exists() {
   arg_name="${2}"
-  for i in ${@:3:$#}; do
+  for i in "${@:3:$#}"; do
     PARAM=`echo $i | awk -F= '{print $1}'`
     VALUE=`echo $i | awk -F= '{print $2}'`
     case ${PARAM} in

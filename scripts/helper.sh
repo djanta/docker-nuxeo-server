@@ -1,4 +1,3 @@
-
 # ---------------------------------------------------------------------------
 # helper.sh - This script will be use to provide our platform deployment helper.sh architecture
 
@@ -77,20 +76,6 @@ command_exists () {
   command -v "$1" >/dev/null 2>&1;
 }
 
-argv () {
-  arg_name="${1}"
-  for i in ${@:1:$#}; do
-    PARAM=`echo $i | awk -F= '{print $1}'`
-    VALUE=`echo $i | awk -F= '{print $2}'`
-    case ${PARAM} in
-    "$arg_name" )
-      echo ${VALUE}
-      break
-    ;;
-    esac
-  done
-}
-
 clean_up () { # Perform pre-exit housekeeping
   return
 }
@@ -125,7 +110,7 @@ signal_exit () { # Handle trapped signals
 ##
 # Enable the given nuxeo tempalte.
 ##
-nuxeo_tpl_enable() {
+nuxeo_tpl_enable () {
   if [[ -n "${1}" ]]  &&  [[ -f "${NUXEO_CONF}" ]]; then
     echo "Enabling the given nuxen template entry: $1"
     perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${1}/g" $NUXEO_CONF
@@ -135,7 +120,7 @@ nuxeo_tpl_enable() {
 ##
 # Create the given redis nuxeo template resourses folder
 ##
-nuxeo_tpl_redis() {
+nuxeo_tpl_redis () {
   if [[ -n "$NUXEO_REDIS_HOST" ]] && [[ -f "$NUXEO_CONF" ]]; then
     ## Make sure we crate the target "redis" directory anyway ...
     mkdir -p "$NUXEO_TPL_HOME/redis"

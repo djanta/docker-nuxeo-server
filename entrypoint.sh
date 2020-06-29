@@ -16,10 +16,9 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-#
-# Adapted from NUXEO Original docker distribution distribution #
-#
-
+# ---------------------------------------------------------------------------
+#       Adapted from NUXEO Original docker distribution distribution        #
+# ---------------------------------------------------------------------------
 set -e
 
 argv0=$(echo "$0" | sed -e 's,\\,/,g')
@@ -33,34 +32,39 @@ esac
 BASE=`dirname ${basedir}`
 CWD=$(pwd)
 USER_HOME="$(eval echo ~)"
-SCRIPT_DIR=$(cd "$BASE/scripts/"; pwd)
+SCRIPT_DIR=$(cd "${BASE}scripts/"; pwd)
 
 echo "BASE Dir: ${BASE}"
+echo "Cwd: ${CWD}"
 echo "Current Working Dir: ${CWD}"
 echo "User Home: ${USER_HOME}"
 echo "Script Dir: ${SCRIPT_DIR}"
 
 # Source the given script ...
-FNC_SCRIPT="$SCRIPT_DIR/helper.sh"
+HELPER="${SCRIPT_DIR}/helper.sh"
+COMMON="${SCRIPT_DIR}/common.sh"
+WATCHER="${SCRIPT_DIR}/watcher.sh"
 
-if [ -f "$FNC_SCRIPT" ]; then
-  echo "Docker utils script located as: $FNC_SCRIPT"
-  #chmod +x "$FNC_SCRIPT" && source "$FNC_SCRIPT"
-  source "$FNC_SCRIPT"
-else
-    echo "[Docker] [entrypoint] Following resource: [$FNC_SCRIPT] cannot be found ;("
-fi
+# shellcheck disable=SC1090
+[[ -f "$HELPER" ]] && source "$HELPER" && source "${COMMON}" && source "${WATCHER}" \
+  || echo "[entrypoint] Following resource: [$HELPER] cannot be found ;("
 
-export DOCKER_HOST_IP=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
+#DOCKER_HOST_IP=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
 
-#docker-machine ip default
+# External default volume base
+EXTERNAL_VOLUME_BASE="/volumes/nuxeo"
+# Given frontend container used to expose the current container such: (Apache2 Server, NGinx, etc ...)
+DEFAULT_CONTAINER_DNS=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
+# External mounted logging configuration file
+EXTERNAL_VOLUME_LOGCONFIG="${EXTERNAL_VOLUME_BASE}/log/sl4j.xml"
 
-# The given frontend container used to expose the current container such: (Apache2 Server, NGinx, etc ...)
-[[ ! -z "$FRONTEND_CONTAINER" ]] && FRONTEND_NAME="$FRONTEND_CONTAINER" || FRONTEND_NAME=""
+# External NUXEO (clid) argument mounted as file or inline string value.
+LICENSE=""
 
-[[ ! -z "${MAX_FD//}" ]] && ULIMIT="$MAX_FD" || ULIMIT=63536
-[[ ! -z "$LIVE_PROJECT" && -d "$LIVE_PROJECT" ]] && IS_DEBUG_JS="yes" || IS_DEBUG_JS="no"
-[[ ! -z "$DEBUG_PORT" ]] && IS_DEBUG_JS="yes" || IS_DEBUG_JS="$IS_DEBUG_JS"
+# Debugging variable configuration
+[[ ! -z "${MAX_FD//}" ]] && ULIMIT="${MAX_FD}" || ULIMIT=63536
+[[ ! -z "${LIVE_PROJECT}" && -d "${LIVE_PROJECT}" ]] && IS_DEBUGING=true || IS_DEBUGING=false
+#[[ ! -z "${DEBUG_PORT}" ]] && IS_DEBUGING=true || IS_DEBUGING="$IS_DEBUGING"
 
 # Expositing the given publc interface
 [[ ! -z "$PUBLIC_DNS_NAME" ]] && DNS_NAME="$PUBLIC_DNS_NAME" || DNS_NAME=$(self_hostname)
@@ -71,20 +75,20 @@ export DOCKER_HOST_IP=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
 [[ ! -z "$DJANTA_BUNDLE_PKG" ]] && DJANTA_BUNDLE="$DJANTA_BUNDLE_PKG" || DJANTA_BUNDLE=""
 [[ ! -z "$NUXEO_UI_PKG" ]] && NUXEO_UI="$NUXEO_UI_PKG" || NUXEO_UI="nuxeo-web-ui nuxeo-dam nuxeo-drive"
 
-echo "Public exposing interface: ${DNS_NAME}"
-echo "Internal container ip: ${DOCKER_HOST_IP}"
+colored --green "[LOG] Public exposing interface: ${DNS_NAME}"
+colored --green "[LOG] Internal container ip: ${DEFAULT_CONTAINER_DNS}"
+colored --green "[LOG] Max ULIMIT: ${ULIMIT}"
 
-#"djanta.nuxeo.public.dns.enabled=true"
-#"djanta.nuxeo.public.dns.address=127.0.0.8"
+# Conditional debugging ...
+[[ ! -z "$LIVE_PROJECT" && -d "$LIVE_PROJECT" ]] && colored --green "[LOG] Live project enabled ($LIVE_PROJECT)" || \
+  colored --cyan "[LOG] Live project deactivated"
 
 NUXEO_PACKAGES="${NUXEO_PACKAGES} ${NUXEO_UI_PKG} ${DJANTA_BUNDLE_PKG}"
 
 NUXEO_CONF=$NUXEO_HOME/bin/nuxeo.conf
 NUXEO_DATA=${NUXEO_DATA:-/var/lib/nuxeo/data}
 NUXEO_LOG=${NUXEO_LOG:-/var/log/nuxeo}
-
 NONINTERACTIVE=${MODE_RELAX:-true}
-DOCKER_LIB_SCRIPT=scripts/docker.sh
 
 # Allow supporting arbitrary user id
 if ! whoami &> /dev/null; then
@@ -95,20 +99,17 @@ if ! whoami &> /dev/null; then
 fi
 
 if [ "$1" = 'nuxeoctl' ]; then
-  if [ ! -f $NUXEO_HOME/configured ]; then
+  if [ ! -f ${NUXEO_HOME}/configured ]; then
 
     # PostgreSQL conf
     if [ -n "$NUXEO_DB_TYPE" ]; then
+      [[ -z "$NUXEO_DB_HOST" ]] && error_exit "You have to setup a NUXEO_DB_HOST if not using default DB type" \
+        || colored --green "[LOG] Configuring database $NUXEO_DB_HOST"
 
-      if [ -z "$NUXEO_DB_HOST" ]; then
-        echo "You have to setup a NUXEO_DB_HOST if not using default DB type"
-        exit 1
-      fi
-
+      NUXEO_DB_PASSWORD=${NUXEO_DB_PASSWORD:-nuxeo}
       NUXEO_DB_HOST=${NUXEO_DB_HOST}
       NUXEO_DB_NAME=${NUXEO_DB_NAME:-nuxeo}
       NUXEO_DB_USER=${NUXEO_DB_USER:-nuxeo}
-      NUXEO_DB_PASSWORD=${NUXEO_DB_PASSWORD:-nuxeo}
 
     	perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_DB_TYPE}/g" $NUXEO_CONF
     	perl -p -i -e "s/^#?nuxeo.db.host=.*$/nuxeo.db.host=${NUXEO_DB_HOST}/g" $NUXEO_CONF
@@ -117,46 +118,25 @@ if [ "$1" = 'nuxeoctl' ]; then
     	perl -p -i -e "s/^#?nuxeo.db.password=.*$/nuxeo.db.password=${NUXEO_DB_PASSWORD}/g" $NUXEO_CONF
     fi
 
-    if [ -n "$NUXEO_TEMPLATES" ]; then
-      perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_TEMPLATES}/g" $NUXEO_CONF
-    fi
+    [[ -n "$NUXEO_TEMPLATES" ]] && perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_TEMPLATES}/g" $NUXEO_CONF
+
+    colored --cyan "[LOG] Elastic Host: $NUXEO_ES_HOSTS"
+    colored --cyan "[LOG] Redis Host: $NUXEO_REDIS_HOST"
 
     # nuxeo.url
-    [ -n "$NUXEO_URL" ] && echo "nuxeo.url=$NUXEO_URL" >> $NUXEO_CONF || echo "" > /dev/null
-
-    if [ -n "$NUXEO_REDIS_HOST" ]; then
-      nuxeo_tpl_redis
-    fi
-
-    if [ -n "$NUXEO_ES_HOSTS" ]; then
-      nuxeo_tpl_elasticsearch
-    fi
-
-    if [ "$NUXEO_AUTOMATION_TRACE" = "true" ]; then
-      echo "org.nuxeo.automation.trace=true" >> $NUXEO_CONF
-    fi
-
-    if [ "$NUXEO_DEV_MODE" = "true" ]; then
-      echo "org.nuxeo.dev=true" >> $NUXEO_CONF
-    fi
-
-    if [ -n "$NUXEO_DDL_MODE" ]; then
-      echo "nuxeo.vcs.ddlmode=${NUXEO_DDL_MODE}" >> $NUXEO_CONF
-    fi
-
-    if [ -n "$NUXEO_CUSTOM_PARAM" ]; then
-      printf "%b\n" "$NUXEO_CUSTOM_PARAM" >> $NUXEO_CONF
-    fi
-
-    if [ -n "$NUXEO_BINARY_STORE" ]; then
-      echo "repository.binary.store=$NUXEO_BINARY_STORE" >> $NUXEO_CONF
-    fi
+    [[ -n "$NUXEO_URL" ]] && echo "nuxeo.url=$NUXEO_URL" >> $NUXEO_CONF || echo "" > /dev/null
+    [[ -n "$NUXEO_REDIS_HOST" ]] && nuxeo_tpl_redis || colored --red "[LOG] Missing redis host declaration"
+    [[ -n "$NUXEO_ES_HOSTS" ]] && nuxeo_tpl_elasticsearch || colored --red "[LOG] Missing elastic host declaration"
+    [[ "$NUXEO_AUTOMATION_TRACE" = "true" ]] && echo "org.nuxeo.automation.trace=true" >> $NUXEO_CONF
+    [[ "$NUXEO_DEV_MODE" = "true" ]] && echo "org.nuxeo.dev=true" >> $NUXEO_CONF || colored --blue "[LOG] Nuxeo DevMode deactivated"
+    [[ -n "$NUXEO_DDL_MODE" ]] && echo "nuxeo.vcs.ddlmode=${NUXEO_DDL_MODE}" >> $NUXEO_CONF
+    [[ -n "$NUXEO_CUSTOM_PARAM" ]] && printf "%b\n" "$NUXEO_CUSTOM_PARAM" >> $NUXEO_CONF
+    [[ -n "$NUXEO_BINARY_STORE" ]] && echo "repository.binary.store=$NUXEO_BINARY_STORE" >> $NUXEO_CONF
 
     if [ -n "$NUXEO_TRANSIENT_STORE" ]; then
       #removes transients stores if exists to allow symbolic link creation
-      if [ -d $NUXEO_DATA/transientstores ]; then
-          rm -rf $NUXEO_DATA/transientstores
-      fi
+      [[ -d $NUXEO_DATA/transientstores ]] && rm -rf $NUXEO_DATA/transientstores
+
       mkdir -p $NUXEO_DATA/transientstores
       ln -s $NUXEO_TRANSIENT_STORE $NUXEO_DATA/transientstores/default
     fi
@@ -167,13 +147,8 @@ nuxeo.pid.dir=/var/run/nuxeo
 nuxeo.data.dir=$NUXEO_DATA
 nuxeo.wizard.done=true
 EOF
-
-    if [ -f /nuxeo.conf ]; then
-      cat /nuxeo.conf >> $NUXEO_CONF
-    fi
-
-    nuxeoctl mp-init
-
+    [[ -f /nuxeo.conf ]] && cat /nuxeo.conf >> $NUXEO_CONF
+    nuxeoctl mp-init # Initialize the platform marketplace configuration by default.
     touch $NUXEO_HOME/configured
   fi
 
@@ -186,10 +161,20 @@ EOF
 
   for f in /docker-entrypoint-initnuxeo.d/*; do
     case "$f" in
-      *.sh)  echo "$0: running $f"; . "$f" ;;
-      *.zip) echo "$0: installing Nuxeo package $f"; nuxeoctl mp-install $f --accept=true ;;
-      *.clid) echo "$0: copying clid to $NUXEO_DATA"; cp $f $NUXEO_DATA/ ;;
-      *)     echo "$0: ignoring $f" ;;
+      *.sh)
+        colored --cyan "$0: running $f";
+        . "$f"
+        ;;
+      *.zip)
+        colored --cyan "$0: installing Nuxeo package $f";
+        nuxeoctl mp-install $f --accept=true
+        ;;
+      *.clid)
+        colored --cyan "$0: copying clid to $NUXEO_DATA";
+        cp $f $NUXEO_DATA/
+        ;;
+      *)
+        colored --red "$0: ignoring $f" ;;
     esac
     echo
   done
@@ -203,20 +188,32 @@ EOF
   if [ -n "$NUXEO_PACKAGES" ]; then
     echo ""
     # nuxeoctl mp-install $NUXEO_PACKAGES --relax=false --accept=true
-#    nuxeoctl mp-install "${NUXEO_PACKAGES}" --relax=${NONINTERACTIVE:-true} --accept=true
+    # nuxeoctl mp-install "${NUXEO_PACKAGES}" --relax=${NONINTERACTIVE:-true} --accept=true
   fi
 
-  # Activate the hard or soft remote file sync for dev model only
-  if [ -n "$LIVE_SYNC" ]; then
-    echo "FIXME : Activate the HOT File sync & hot reload mode "
+  ## Remote synchronization activation only for development mode only
+  if [[ $IS_DEBUGING ]]; then
+    ldir="${NUXEO_LOG:-/tmp}"
+    log="${ldir}/inotify_${datestamp}.log"
+
+    mkdir -p "$ldir" && touch "$log" # create an empty monitoring log file
+    colored --yellow "Inotify monitoring log file: ${log}"
+
+    # Start the watcher in background project ...
+    watch --log="${log}" --source="${LIVE_PROJECT}" &
   fi
 
   if [ "$2" = "console" ]; then
-    exec nuxeoctl console
+    ## Start the given endpoint server instance ...
+#    exec nuxeoctl "$2"
+    colored --yellow "Temporary execution deactivation ...."
   else
-    exec "$@"
+#    exec "$@"
+    colored --yellow "Temporary execution deactivation ...."
   fi
 fi
 
 ## Main entry point ...
 exec "$@"
+
+#trap cleanup EXIT

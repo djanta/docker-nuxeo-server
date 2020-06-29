@@ -5,6 +5,11 @@ language: bash
 services:
   - docker
 
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 # Don't build release tags. This avoids publish conflicts because the version commit exists both on master and the release tag.
 # See https://github.com/travis-ci/travis-ci/issues/1532
 branches:
@@ -12,11 +17,6 @@ branches:
   #  - /^[0-9]/
 
   # safelist
-#  only:
-#    - master
-#    - develop
-#    - release
-#    - /^[0-9]/
   only:
     - master
     - develop
@@ -25,7 +25,8 @@ branches:
 
 env:
   matrix:
-    - VERSION=8.10 VARIANT=tomcat
+    - VERSION=8.10 VARIANT=CE
+    - VERSION=8.10 VARIANT=EE
 
 # before install any component
 before_install:
@@ -37,28 +38,42 @@ before_install:
   - git config credential.helper "store --file=.git/credentials"
   - echo "https://$GH_TOKEN:@github.com" > .git/credentials
 
+  #Install docker library official image testing ...
+  - git clone https://github.com/docker-library/official-images.git ~/official-images
+
   # Update all git submodule (No need this manual submodule update ...)
   ##- git submodule init && git submodule update --init --recursive --remote --merge
 
-  # Install any required components
-  #install:
-  #  - git clone https://github.com/docker-library/official-images.git ~/official-images
-
 before_script:
   - env | sort
-#  - cd "dockerfiles/$VERSION"
-  - IMAGE_BASE="${ACCOUNT_ID:-djantaio}/nuxeo-server"
+  - cd "dockerfiles/$VERSION"
+  - BASE=${ACCOUNT_ID:-djanta}
+  - PROJECT=nuxeo-server
+  - IMAGE_BASE="${BASE}/${PROJECT}"
   - IMAGE_TAG="${IMAGE_BASE}:$VERSION"
-  - IMAGE_BRANCH="${IMAGE_BASE}:$VERSION-${TRAVIS_BRANCH}"
-  - IMAGE_TAG_VARIANT="${IMAGE_BASE}:$VERSION-$VARIANT"
-  - IMAGE_BRANCH_VARIANT="${IMAGE_BASE}:$VERSION-$VARIANT-${TRAVIS_BRANCH}"
+  - IMAGE_BRANCH="${IMAGE_TAG}-${TRAVIS_BRANCH}"
+  - IMAGE_SNAPSHOT="${IMAGE_TAG}-snapshot"
 
-  # Making sure we login ...
+  - GITHUB_IMAGE_TAG="${PROJECT}:${VERSION}"
+  - GITHUB_IMAGE_BRANCH="${GITHUB_IMAGE_TAG}-${TRAVIS_BRANCH}"
+  - GITHUB_REGISTRY=docker.pkg.github.com/$TRAVIS_REPO_SLUG
+  - GITHUB_IMAGE_SNAPSHOT="${GITHUB_IMAGE_TAG}-snapshot"
+
+  # Login into official docker registry ...
   - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USER" --password-stdin
 
+  # Login into github docker registry ...
+  - echo "$GH_TOKEN" | docker login  docker.pkg.github.com --username "$GH_USER" --password-stdin
+
+  # Year based version format. CREDIT: https://www.cyberciti.biz/faq/linux-unix-formatting-dates-for-display/
+  - R_VERSION=$(date -u +'%y.%m')
+  
 script:
-  - docker --debug build -t "$IMAGE_TAG" -f "dockerfiles/$VERSION/Dockerfile" .
-  #- travis_wait 30 travis_retry ~/official-images/test/run.sh "$IMAGE_TAG"
+  - travis_wait 30 travis_retry docker --debug build --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') -t $IMAGE_TAG --file $TRAVIS_BUILD_DIR/dockerfiles/$VERSION/Dockerfile .
+
+  # Testing the current given built image
+  - travis_wait 30 travis_retry ~/official-images/test/run.sh "$IMAGE_TAG"
+
 after_script:
   - docker images
 
@@ -67,6 +82,8 @@ stages:
     if: (branch = develop AND type != pull_request) AND commit_message !~ /^(prepare release ([0-9\.]+))$/
   - name: snapshot
     if: branch = master AND type != pull_request AND commit_message !~ /^(prepare release ([0-9\.]+))$/
+  - name: rehydrate
+    if: $TRAVIS_EVENT_TYPE = cron #branch = master AND type != pull_request AND commit_message !~ /^(prepare release ([0-9\.]+))$/
   - name: release
     ## Validator: https://regex101.com/
     if: tag =~ /^((rc|v|version|release|tag)(-)?)?([0-9\.]+)((-)?(patch|beta|alpha))?$/
@@ -79,21 +96,36 @@ jobs:
     install: true
     before_deploy:
       - docker tag "$IMAGE_TAG" "$IMAGE_BRANCH"
-    deploy:
-      provider: script
-      script: docker push "$IMAGE_BRANCH" #&& docker push "${IMAGE_NAME}:${git_sha}-develop"
-      on:
-        branch: develop
+      - docker tag "$IMAGE_TAG" $GITHUB_REGISTRY/$GITHUB_IMAGE_BRANCH
+  #      deploy:
+  #        provider: script
+  #        script: docker push "$IMAGE_BRANCH" && docker push ${GITHUB_REGISTRY}/$GITHUB_IMAGE_BRANCH
+  #        on:
+  #          branch: develop
+
   - stage: snapshot
     name: "Deploy Snapshot to Maven repo"
     install: true
-    script:
-      - echo "Not Yet Implemented ..."
+    before_deploy:
+      - docker tag "$IMAGE_TAG" "$IMAGE_SNAPSHOT"
+      - docker tag "$IMAGE_TAG" $GITHUB_REGISTRY/$GITHUB_IMAGE_SNAPSHOT
+    deploy:
+      provider: script
+      script: docker push "$IMAGE_SNAPSHOT" && docker push ${GITHUB_REGISTRY}/$GITHUB_IMAGE_SNAPSHOT
+      on:
+        branch: master
+
   - stage: release
     name: "Release, Tag & push the released version"
     install: true
-    script:
-      - echo "Not Yet Implemented ..."
+    before_deploy:
+      - docker tag "$IMAGE_TAG" "$IMAGE_TAG"
+      - docker tag "$IMAGE_TAG" $GITHUB_REGISTRY/$IMAGE_TAG
+    deploy:
+      provider: script
+      script: docker push "$IMAGE_TAG" && docker push ${GITHUB_REGISTRY}/$IMAGE_TAG
+#        on:
+#          branch: release
 
 notifications:
   email:
@@ -101,3 +133,5 @@ notifications:
       - "$GH_USER_EMAIL"
     on_success: change  # default: change
     on_failure: always  # default: always
+
+# vim:set et ts=2 sw=2:
