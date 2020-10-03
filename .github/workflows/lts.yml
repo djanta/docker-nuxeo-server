@@ -1,0 +1,158 @@
+#
+# Copyright 2019-2020 DJANTA, LLC (https://www.djanta.io)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed toMap in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+name: LTS Master
+
+# On push event ...
+on:
+  # Trigger the workflow on push or pull request, but only for the master branch
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+#        version: [8, 11, 14, 15, 16]
+        arch: [debian, ubuntu]
+    steps:
+      #      - name: Check Commit Type
+      #        uses: gsactions/commit-message-checker@v1
+      #        with:
+      #          pattern: '\[[^]]+\] .+$'
+      #          flags: 'gm'
+      #          error: 'Your first line has to contain a commit type like "[BUGFIX]".'
+      #      - name: Check Line Length
+      #        uses: gsactions/commit-message-checker@v1
+      #        with:
+      #          pattern: '^[^#].{74}'
+      #          error: 'The maximum line length of 74 characters is exceeded.'
+      #      - name: Check for Resolves / Fixes
+      #        uses: gsactions/commit-message-checker@v1
+      #        with:
+      #          pattern: '^.+(Resolves|Fixes): \#[0-9]+$'
+      #          error: 'You need at least one "Resolves|Fixes: #<issue number>" line.'
+
+      #      - name : GITHUB CONTEXT
+      #        env:
+      #          GITHUB_CONTEXT: ${{ toJson(github) }}
+      #        run: echo "$GITHUB_CONTEXT"
+
+      - name: Checking out - (${{ matrix.arch }})
+        uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          submodules: true
+
+      - name: Submodules Sync - (${{ matrix.arch }})
+        shell: bash
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --remote --merge --force --depth=3
+
+      - name: GitHub credentials configuration - ${{ matrix.arch }}
+        shell: bash
+        run: |
+          git config user.name "${{ secrets.GH_USER }}"
+          git config user.email "${{ secrets.GH_USER_EMAIL }}"
+          git config credential.helper "store --file=.git/credentials"
+          echo "https://${{ secrets.GITHUB_TOKEN }}:@github.com" > .git/credentials
+
+      - name: Pull docker slimify
+        env:
+          IMAGE: dslim/docker-slim:latest
+        run: |
+          docker pull "$IMAGE"
+
+      - name: Build Image & Deploy develop tag - (${{ matrix.arch }})
+        env:
+          GITHUB_USERNAME: ${{ secrets.GH_USER }}
+          GH_USER: ${{ secrets.GH_USER }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+          PROJECT_ID: nuxeo-sdk
+          ACCOUNT_ID: djanta
+          IMAGE_BASE: $ACCOUNT_ID/$PROJECT_ID
+          IMAGE_TAG: $IMAGE_BASE:$VERSION
+          GITHUB_IMAGE_TAG: $PROJECT_ID:$VERSION
+          GITHUB_IMAGE_BRANCH: $GITHUB_IMAGE_TAG-$TRAVIS_BRANCH
+          GITHUB_REGISTRY: docker.pkg.github.com
+          GITHUB_SLOG_REGISTRY: $GITHUB_REGISTRY/$GITHUB_REPOSITORY
+        run: |
+          image_id=$ACCOUNT_ID/$PROJECT_ID-${{ matrix.arch }}:develop
+          docker --debug build -t $image_id \
+            --build-arg BUILD_VERSION=$(date -u +'%y.%m') \
+            --build-arg BUILD_HASH=$(git rev-parse HEAD) \
+            --build-arg RELEASE_VERSION=$(date -u +'%y.%m') \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --file $(pwd)/dockerfiles/${{ matrix.arch }}/Dockerfile .
+
+      - name: 'Run Docker test'
+        shell: bash
+        env:
+          IMAGE: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
+        run: |
+          git clone https://github.com/docker-library/official-images.git ~/official-images
+          ~/official-images/test/run.sh $IMAGE
+
+      - name: Snyk vulnerabilities check
+        uses: snyk/actions/docker@master
+        fail-fast: false
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
+          args: --severity-threshold=high --file=dockerfiles/${{ matrix.arch }}/.vulnerability
+
+#      - name: Run Gitrivy Vulnerability check
+#        uses: homoluctus/gitrivy@v2.0.0
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          image: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
+#          trivy_version: true
+#          issue_label: test,report,vulnerability
+
+#      - name: Create Pull Request
+#        id: cpr
+#        uses: peter-evans/create-pull-request@v2
+#        with:
+#          token: ${{ secrets.GH_TOKEN }}
+#          commit-message: "[WIP] - PR after passing ${GITHUB_REF} build"
+#          committer: GitHub <noreply@github.com>
+#          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+#          title: '[PR: #${{ github.run_number }}] from ${{ github.ref }} by (${{ github.event.head_commit.committer.name }})'
+#          body: |
+#            - ${{ github.event.head_commit.message }}
+#            - Auto-generated by [create-pull-request][1]
+#            [1]: https://github.com/$GITHUB_REPOSITORY/pull
+#          labels: report, automated pr
+#          assignees: stanislaska
+#          reviewers: stanislaska
+#          team-reviewers: owners, maintainers
+#          draft: false
+#          branch: patch
+#          request-to-parent: false
+#          branch-suffix: short-commit-hash
+
+#      - name: Create or Update Project Card
+#        uses: peter-evans/create-or-update-project-card@v1
+#        with:
+#          token: ${{ secrets.GITHUB_TOKEN }}
+#          project-name: Cloud
+#          column-name: To do
+#          issue-number: ${{ steps.cpr.outputs.pull-request-number }}

@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # ---------------------------------------------------------------------------
-# docker.sh - This script will be use to provide our platform deployment dockerjs.sh architecture
+# build.sh - This script will be use to provide our platform deployment build.sh architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-set -e
+#set -e
 
 argv0=$(echo "$0" | sed -e 's,\\,/,g')
 basedir=$(dirname "$(readlink "$0" || echo "$argv0")")
@@ -26,12 +26,37 @@ case "$(uname -s)" in
   *CYGWIN*) basedir=`cygpath -w "$basedir"`;;
 esac
 
-BASE=`dirname ${basedir}`
-CWD=$(pwd)
-USER_HOME="$(eval echo ~)"
+#BASE=`dirname ${basedir}`
+#CWD=$(pwd)
+#docker system prune -a -f
 
-VERSION=${1:-8.10}
-IMAGE_TAG="djanta/nuxeo-server:${VERSION}"
+YEAR=$(date -u +'%y')
+MONTH=$(date -u +'%m')
 
-docker --debug build --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') -t $IMAGE_TAG \
-  --file $CWD/dockerfiles/$VERSION/Dockerfile .
+DISTRIBUTION=${1:-debian}
+NUXEO_LTS=${2:-10.10}
+NUXEO_SHORT_LTS=${NUXEO_LTS%.*}
+JDK_VERSION=8
+SDK_VERSION=$(date -u +'%y.%m')."${JDK_VERSION}"
+
+#VERSION_PREFIX=$(date -u +'%y.%m')
+VERSION_SURFIX=${YEAR}$((10#$MONTH))
+BUILD_VERSION=$(date -u +'%y.%m.%d')-"$NUXEO_SHORT_LTS"
+
+#LTS.SDK.YEARMONTH-VARIANT
+VERSION_TAG="$NUXEO_SHORT_LTS.${SDK_VERSION##*.}.$VERSION_SURFIX"
+#VERSION_TAG="$VERSION_PREFIX.$NUXEO_SHORT_LTS"
+#SDK_VERSION=$(date -u +'%y.%m')."$NUXEO_SHORT_LTS"
+
+#docker --debug build --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') -t $IMAGE_TAG \
+#  --file $CWD/dockerfiles/$VERSION/Dockerfile .
+
+docker --debug build -t djanta/nuxeo-server-"$DISTRIBUTION":"$VERSION_TAG" \
+  --build-arg BUILD_VERSION="$BUILD_VERSION" \
+  --build-arg BUILD_HASH=$(git rev-parse HEAD) \
+  --build-arg RELEASE_VERSION="$VERSION_TAG" \
+  --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+  --build-arg BUILD_SDK_VERSION="$SDK_VERSION" \
+  --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
+  --build-arg BUILD_DISTRIBUTION_ID="$DISTRIBUTION" \
+  --file $(pwd)/dockerfiles/"$DISTRIBUTION"/Dockerfile .

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# docker.sh - This script will be use to provide our platform deployment dockerjs.sh architecture
+# docker-entrypoint.sh - This script will be use to provide our platform deployment docker-entrypoint.sh architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,6 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-#       Adapted from NUXEO Original docker distribution distribution        #
-# ---------------------------------------------------------------------------
 set -e
 
 argv0=$(echo "$0" | sed -e 's,\\,/,g')
@@ -30,65 +27,36 @@ case "$(uname -s)" in
 esac
 
 BASE=`dirname ${basedir}`
-CWD=$(pwd)
-USER_HOME="$(eval echo ~)"
-SCRIPT_DIR=$(cd "${BASE}scripts/"; pwd)
+#LIB_CONFIGD=$(cd "$BASE"library/config.d/; pwd)
+#LIBRARY=$(cd "$BASE"library/common/; pwd)
+#
+## Source the given script ...
+#HELPER=$LIBRARY/helper.sh
+#COMMON=$LIBRARY/common.sh
+#WATCHER=$LIBRARY/watcher.sh
+#
+## shellcheck disable=SC1090
+#[[ -f "$HELPER" ]] && source "$HELPER" && source "${COMMON}" || \
+#  echo "[entrypoint] Following resource: [$HELPER] cannot be found ;("
+#
+#source "$LIBRARY"/log.sh
 
-echo "BASE Dir: ${BASE}"
-echo "Cwd: ${CWD}"
-echo "Current Working Dir: ${CWD}"
-echo "User Home: ${USER_HOME}"
-echo "Script Dir: ${SCRIPT_DIR}"
+all=("common.sh" "helper.sh" "log.sh")
+for file in "${all[@]}"; do source "${SHARED_LIB}/${file}"; done
 
-# Source the given script ...
-HELPER="${SCRIPT_DIR}/helper.sh"
-COMMON="${SCRIPT_DIR}/common.sh"
-WATCHER="${SCRIPT_DIR}/watcher.sh"
+#regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]\.[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
+#url='http://www.google.com/test/link.php'
+#if [[ $url =~ $regex ]]
+#then
+#    echo "$url IS valid"
+#else
+#    echo "$url IS NOT valid"
+#fi
 
-# shellcheck disable=SC1090
-[[ -f "$HELPER" ]] && source "$HELPER" && source "${COMMON}" && source "${WATCHER}" \
-  || echo "[entrypoint] Following resource: [$HELPER] cannot be found ;("
+## Fix syntax: https://github.com /koalaman/shellcheck/wiki/SC2236
+[[ -n "${MAX_FD//}" ]] && ULIMIT="${MAX_FD}" || ULIMIT=63536
 
-#DOCKER_HOST_IP=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
-
-# External default volume base
-EXTERNAL_VOLUME_BASE="/volumes/nuxeo"
-# Given frontend container used to expose the current container such: (Apache2 Server, NGinx, etc ...)
-DEFAULT_CONTAINER_DNS=`netstat -nr | grep '^0\.0\.0\.0' | awk '{print $2}'`
-# External mounted logging configuration file
-EXTERNAL_VOLUME_LOGCONFIG="${EXTERNAL_VOLUME_BASE}/log/sl4j.xml"
-
-# External NUXEO (clid) argument mounted as file or inline string value.
-LICENSE=""
-
-# Debugging variable configuration
-[[ ! -z "${MAX_FD//}" ]] && ULIMIT="${MAX_FD}" || ULIMIT=63536
-[[ ! -z "${LIVE_PROJECT}" && -d "${LIVE_PROJECT}" ]] && IS_DEBUGING=true || IS_DEBUGING=false
-#[[ ! -z "${DEBUG_PORT}" ]] && IS_DEBUGING=true || IS_DEBUGING="$IS_DEBUGING"
-
-# Expositing the given publc interface
-[[ ! -z "$PUBLIC_DNS_NAME" ]] && DNS_NAME="$PUBLIC_DNS_NAME" || DNS_NAME=$(self_hostname)
-[[ ! -z "$PUBLIC_DNS_CONTAINER" ]] && DNS_CONTAINER=$(dockerip "$PUBLIC_DNS_CONTAINER") || DNS_CONTAINER=""
-[[ ! -z "$PUBLIC_DNS_ENABLED" ]] && DNS_ENABLED="$PUBLIC_DNS_ENABLED" || DNS_ENABLED="yes"
-
-# Pre Packaging configuration
-[[ ! -z "$DJANTA_BUNDLE_PKG" ]] && DJANTA_BUNDLE="$DJANTA_BUNDLE_PKG" || DJANTA_BUNDLE=""
-[[ ! -z "$NUXEO_UI_PKG" ]] && NUXEO_UI="$NUXEO_UI_PKG" || NUXEO_UI="nuxeo-web-ui nuxeo-dam nuxeo-drive"
-
-colored --green "[LOG] Public exposing interface: ${DNS_NAME}"
-colored --green "[LOG] Internal container ip: ${DEFAULT_CONTAINER_DNS}"
-colored --green "[LOG] Max ULIMIT: ${ULIMIT}"
-
-# Conditional debugging ...
-[[ ! -z "$LIVE_PROJECT" && -d "$LIVE_PROJECT" ]] && colored --green "[LOG] Live project enabled ($LIVE_PROJECT)" || \
-  colored --cyan "[LOG] Live project deactivated"
-
-NUXEO_PACKAGES="${NUXEO_PACKAGES} ${NUXEO_UI_PKG} ${DJANTA_BUNDLE_PKG}"
-
-NUXEO_CONF=$NUXEO_HOME/bin/nuxeo.conf
-NUXEO_DATA=${NUXEO_DATA:-/var/lib/nuxeo/data}
-NUXEO_LOG=${NUXEO_LOG:-/var/log/nuxeo}
-NONINTERACTIVE=${MODE_RELAX:-true}
+happy "Max ULIMIT: ${ULIMIT}"
 
 # Allow supporting arbitrary user id
 if ! whoami &> /dev/null; then
@@ -98,122 +66,163 @@ if ! whoami &> /dev/null; then
   fi
 fi
 
+[ -f /var/run/docker.sock ] && warn "You're now running docker in docker"
+
 if [ "$1" = 'nuxeoctl' ]; then
-  if [ ! -f ${NUXEO_HOME}/configured ]; then
 
-    # PostgreSQL conf
-    if [ -n "$NUXEO_DB_TYPE" ]; then
-      [[ -z "$NUXEO_DB_HOST" ]] && error_exit "You have to setup a NUXEO_DB_HOST if not using default DB type" \
-        || colored --green "[LOG] Configuring database $NUXEO_DB_HOST"
+  # Reset an existing "$NUXEO_HOME"/configured
+  [ -n "$DRY_MODE" ] && [ "$DRY_MODE" = "true" ] && log "Reset and clean up any existing configuration"
 
-      NUXEO_DB_PASSWORD=${NUXEO_DB_PASSWORD:-nuxeo}
-      NUXEO_DB_HOST=${NUXEO_DB_HOST}
-      NUXEO_DB_NAME=${NUXEO_DB_NAME:-nuxeo}
-      NUXEO_DB_USER=${NUXEO_DB_USER:-nuxeo}
+  [ -n "$FORCE_RECREATE" ] && [ ! -f "$NUXEO_HOME"/configured ]  \
+    && warn "Clean up and recreate the deployment configuration" \
+    || log "No force recreation"
 
-    	perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_DB_TYPE}/g" $NUXEO_CONF
-    	perl -p -i -e "s/^#?nuxeo.db.host=.*$/nuxeo.db.host=${NUXEO_DB_HOST}/g" $NUXEO_CONF
-    	perl -p -i -e "s/^#?nuxeo.db.name=.*$/nuxeo.db.name=${NUXEO_DB_NAME}/g" $NUXEO_CONF
-    	perl -p -i -e "s/^#?nuxeo.db.user=.*$/nuxeo.db.user=${NUXEO_DB_USER}/g" $NUXEO_CONF
-    	perl -p -i -e "s/^#?nuxeo.db.password=.*$/nuxeo.db.password=${NUXEO_DB_PASSWORD}/g" $NUXEO_CONF
-    fi
+  # Re-configure nuxeo environment ...
+  if [ ! -f "$NUXEO_HOME"/configured ]; then
+    mergeable=("$CONFIG_D")
+    TMPD="/tmp/$(date -u +'%Y%m%dT_%H%M%SZ')"
 
-    [[ -n "$NUXEO_TEMPLATES" ]] && perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_TEMPLATES}/g" $NUXEO_CONF
+    mkdir -p "$TMPD"
 
-    colored --cyan "[LOG] Elastic Host: $NUXEO_ES_HOSTS"
-    colored --cyan "[LOG] Redis Host: $NUXEO_REDIS_HOST"
+    [ -z "$NUXEO_CONNECT_TOKEN" ] && warn "Missing NUXEO_CONNECT_TOKEN variable."
+    [ -z "$NUXEO_CONNECT_USERID" ] && warn "Missing NUXEO_CONNECT_USERID variable."
 
-    # nuxeo.url
-    [[ -n "$NUXEO_URL" ]] && echo "nuxeo.url=$NUXEO_URL" >> $NUXEO_CONF || echo "" > /dev/null
-    [[ -n "$NUXEO_REDIS_HOST" ]] && nuxeo_tpl_redis || colored --red "[LOG] Missing redis host declaration"
-    [[ -n "$NUXEO_ES_HOSTS" ]] && nuxeo_tpl_elasticsearch || colored --red "[LOG] Missing elastic host declaration"
-    [[ "$NUXEO_AUTOMATION_TRACE" = "true" ]] && echo "org.nuxeo.automation.trace=true" >> $NUXEO_CONF
-    [[ "$NUXEO_DEV_MODE" = "true" ]] && echo "org.nuxeo.dev=true" >> $NUXEO_CONF || colored --blue "[LOG] Nuxeo DevMode deactivated"
-    [[ -n "$NUXEO_DDL_MODE" ]] && echo "nuxeo.vcs.ddlmode=${NUXEO_DDL_MODE}" >> $NUXEO_CONF
-    [[ -n "$NUXEO_CUSTOM_PARAM" ]] && printf "%b\n" "$NUXEO_CUSTOM_PARAM" >> $NUXEO_CONF
-    [[ -n "$NUXEO_BINARY_STORE" ]] && echo "repository.binary.store=$NUXEO_BINARY_STORE" >> $NUXEO_CONF
+    [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && mergeable+=("$CONFIG_D/$DEPLOY_ENV")
+    for dir in "${mergeable[@]}"; do
+      warn "Scanning ($dir) directory for deploy."
+      [ -f "$dir/nuxeo.conf" ] && warn "Overrride nuxeo.conf @ $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
+      [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
+      [ -d "$dir/log" ] && mv -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
+      [ -d "$dir/config" ] && mv -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
+      [ -d "$dir/templates" ] && mv -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
+    done
 
-    if [ -n "$NUXEO_TRANSIENT_STORE" ]; then
-      #removes transients stores if exists to allow symbolic link creation
-      [[ -d $NUXEO_DATA/transientstores ]] && rm -rf $NUXEO_DATA/transientstores
+    ######
+    # NUXEO INTERNAL PROPERTIES CONFIGURATION
+    ######
 
-      mkdir -p $NUXEO_DATA/transientstores
-      ln -s $NUXEO_TRANSIENT_STORE $NUXEO_DATA/transientstores/default
-    fi
+    # Override nuxeo url
+    [ -n "$NUXEO_URL" ] && echo "nuxeo.url=$NUXEO_URL" >> "$NUXEO_CONF" || echo "" > /dev/null 2>&1
 
-    cat << EOF >> $NUXEO_CONF
+    # Skip Nuxeo Install & Configuration the first time
+    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF"
+
+#    [ -d "$NUXEO_LOG" ] && perl -p -i -e "s/^#?nuxeo.log.dir=.*$/nuxeo.log.dir=\/${NUXEO_LOG#?}/g" "$NUXEO_CONF"
+#    [ -d "$NUXEO_RUN" ] && perl -p -i -e "s/^#?nuxeo.pid.dir=.*$/nuxeo.pid.dir=\/${NUXEO_RUN#?}/g" "$NUXEO_CONF"
+#    [ -d "$NUXEO_DATA" ] && perl -p -i -e "s/^#?nuxeo.data.dir=.*$/nuxeo.data.dir=\/${NUXEO_DATA#?}/g" "$NUXEO_CONF"
+#    [ -d "$NUXEO_TMP" ] && perl -p -i -e "s/^#?nuxeo.tmp.dir=.*$/nuxeo.tmp.dir=\/${NUXEO_TMP#?}/g" "$NUXEO_CONF"
+
+    config="$TMPD"/@config.d
+    mkdir -p "$config"
+
+#    # Copy user shared configuration ...
+#    for file in "$CONFIGD/init.d"/*; do
+#      debug "Copying init.d resource from $file -> $config"
+#      cp "$file" "$config"/
+#    done
+
+    info "Merging built-in config.d with user provided init.d"
+    for file in "${SHARED_LIB}"/config.d/*; do
+      [ ! -f "$config/$file" ] && debug "Copying config.d resource from $file to $config" \
+        && cp "$file" "$config"/ || debug "Target file: [$config/$file] has been contributed"
+    done
+
+    for file in "$config"/*; do
+      case $file in
+        *.sh)
+          bash < "$file" #> /dev/null 2>&1
+        ;;
+        *)
+         warn "$0: ignoring $file" ;;
+      esac
+    done
+
+#    if [ -n "$NUXEO_TRANSIENT_STORE" ]; then
+#      #removes transients stores if exists to allow symbolic link creation
+#      [[ -d $NUXEO_DATA/transientstores ]] && rm -rf $NUXEO_DATA/transientstores
+#
+#      mkdir -p $NUXEO_DATA/transientstores
+#      ln -s $NUXEO_TRANSIENT_STORE $NUXEO_DATA/transientstores/default
+#    fi
+
+  cat << EOF >> "$NUXEO_CONF"
+##-----------------------------------------------------------------------------
+## Auto generated configuration at runtime.
+## Date: $(date '+%Y-%m-%d %T.%3N')
+## Source: $0
+##-----------------------------------------------------------------------------
 nuxeo.log.dir=$NUXEO_LOG
-nuxeo.pid.dir=/var/run/nuxeo
+nuxeo.pid.dir=$NUXEO_RUN
 nuxeo.data.dir=$NUXEO_DATA
-nuxeo.wizard.done=true
+nuxeo.tmp.dir=$NUXEO_TMP
+
+### BEGIN - DO NOT EDIT BETWEEN BEGIN AND END ###
 EOF
-    [[ -f /nuxeo.conf ]] && cat /nuxeo.conf >> $NUXEO_CONF
+
+    cat << EOF >> "$NUXEO_HOME/configured"
+##-----------------------------------------------------------------------------
+## Auto generated configuration at runtime.
+## Date: $(date '+%Y-%m-%d %T.%3N')
+## Source: $0
+##-----------------------------------------------------------------------------
+EOF
+
+    rm -rf "$config" # remove the temp directory
     nuxeoctl mp-init # Initialize the platform marketplace configuration by default.
-    touch $NUXEO_HOME/configured
+  else
+    happy "Container already configured ..."
   fi
 
   # instance.clid
   if [ -n "$NUXEO_CLID" ]; then
     # Replace --  by a carriage return
     NUXEO_CLID="${NUXEO_CLID/--/\\n}"
-    printf "%b\n" "$NUXEO_CLID" >> $NUXEO_DATA/instance.clid
+    printf "%b\n" "$NUXEO_CLID" >> "$NUXEO_DATA"/instance.clid
   fi
 
-  for f in /docker-entrypoint-initnuxeo.d/*; do
-    case "$f" in
+  for file in /packages.d/*; do
+    case $file in
       *.sh)
-        colored --cyan "$0: running $f";
-        . "$f"
+        bash < "$file" > /dev/null 2>&1
         ;;
       *.zip)
-        colored --cyan "$0: installing Nuxeo package $f";
-        nuxeoctl mp-install $f --accept=true
+        nuxeoctl mp-install "$file" --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
+        ;;
+      *.jar)
+        cp "$file" "$NUXEO_HOME/nxserver/plugin/"
         ;;
       *.clid)
-        colored --cyan "$0: copying clid to $NUXEO_DATA";
-        cp $f $NUXEO_DATA/
+        cp "$file" "$NUXEO_DATA"/
         ;;
       *)
-        colored --red "$0: ignoring $f" ;;
+        info "$0: ignoring $file" ;;
     esac
-    echo
   done
 
-  ## Executed at each start
-  if [ -n "$NUXEO_CLID"  ] && [ ${NUXEO_INSTALL_HOTFIX:='true'} == "true" ]; then
-      nuxeoctl mp-hotfix --accept=true
+  if [ -n "$NUXEO_CLID"  ] && [ "$NUXEO_INSTALL_HOTFIX" == "true" ]; then
+      nuxeoctl mp-hotfix --accept=true > /dev/null 2>&1
   fi
 
-  # Install packages if exist
+  # Install packages if given
   if [ -n "$NUXEO_PACKAGES" ]; then
-    echo ""
-    # nuxeoctl mp-install $NUXEO_PACKAGES --relax=false --accept=true
-    # nuxeoctl mp-install "${NUXEO_PACKAGES}" --relax=${NONINTERACTIVE:-true} --accept=true
+    nuxeoctl mp-install "$NUXEO_PACKAGES" --relax=false --accept=true > /dev/null 2>&1
   fi
 
-  ## Remote synchronization activation only for development mode only
-  if [[ $IS_DEBUGING ]]; then
-    ldir="${NUXEO_LOG:-/tmp}"
-    log="${ldir}/inotify_${datestamp}.log"
-
-    mkdir -p "$ldir" && touch "$log" # create an empty monitoring log file
-    colored --yellow "Inotify monitoring log file: ${log}"
-
-    # Start the watcher in background project ...
-    watch --log="${log}" --source="${LIVE_PROJECT}" &
-  fi
-
-  if [ "$2" = "console" ]; then
-    ## Start the given endpoint server instance ...
-#    exec nuxeoctl "$2"
-    colored --yellow "Temporary execution deactivation ...."
-  else
-#    exec "$@"
-    colored --yellow "Temporary execution deactivation ...."
-  fi
+  for file in "${SHARED_LIB}"/init.d/*; do
+    case $file in
+      *.sh)
+        if [ -x "$file" ]; then
+          bash "$file" &
+        else
+          error "$file cannot be executed."
+        fi
+      ;;
+      *)
+#       warn "$0: ignoring $file" ;;
+    esac
+  done
 fi
 
-## Main entry point ...
 exec "$@"
 
 #trap cleanup EXIT

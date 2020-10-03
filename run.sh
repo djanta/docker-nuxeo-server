@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# docker.sh - This script will be use to provide our platform deployment dockerjs.sh architecture
+# run.sh - This script will be use to provide our platform deployment dockerjs.sh architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -30,8 +30,20 @@ BASE=`dirname ${basedir}`
 CWD=$(pwd)
 USER_HOME="$(eval echo ~)"
 
-VERSION=${1:-8.10}
-IMAGE_TAG="djanta/nuxeo-server:${VERSION}"
+VARIANT=${1:-openjdk}
+VERSION=${2:-10.10}
+IMAGE_TAG="djanta/nuxeo-server-${VARIANT}:${VERSION}"
 
-docker run -it --name nx-server -v /Users/stanislas/Downloads/Projects:/volumes/nuxeo/projects \
-  -p 8080:8080 -e LIVE_PROJECT=/volumes/nuxeo/projects "${IMAGE_TAG}"
+DISTRIBUTION=${1:-debian}
+NUXEO_FULL_VERSION=${2:-8.10}
+NUXEO_SHORT_VERSION=${NUXEO_FULL_VERSION%.*}
+VERSION_PREFIX=$(date -u +'%y.%m')
+VERSION_TAG="$VERSION_PREFIX.$NUXEO_SHORT_VERSION"
+IMAGE_TAG=djanta/nuxeo-server-"$DISTRIBUTION":"$VERSION_TAG"
+
+#docker run -it --name nx-server-${VERSION} -v /Users/stanislas/Downloads/Projects:/volumes/nuxeo/projects \
+#  -p 8080:8080 -e LIVE_PROJECT=/volumes/nuxeo/projects "${IMAGE_TAG}"
+
+#docker container rm nuxeo-server-${VARIANT}-${VERSION} -f
+docker run --name nuxeo-server-"$DISTRIBUTION"-"$VERSION_TAG" -p 8080:8080 -e SKIP_WIZARD=true \
+  -e NUXEO_DEV_MODE=true "${IMAGE_TAG}"
