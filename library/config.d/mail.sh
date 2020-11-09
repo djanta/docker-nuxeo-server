@@ -17,6 +17,7 @@
 # ---------------------------------------------------------------------------
 
 if [ -n "$NUXEO_EMAIL_TRANSPORT_HOST" ] || [ -n "$NUXEO_EMAIL_STORE_HOST" ]; then
+
   perl -p -i -e "s/^#?mail.from=.*$/mail.from=${NUXEO_EMAIL_FROM:-donotreply@local.host}/g" "$NUXEO_CONF"
   perl -p -i -e "s/^#?mail.debug=.*$/mail.debug=${NUXEO_EMAIL_DEBUG:-true}/g" "$NUXEO_CONF"
   perl -p -i -e "s/^#?nuxeo.notification.eMailSubjectPrefix=.*$/nuxeo.notification.eMailSubjectPrefix=${NUXEO_EMAIL_PREFIX:-[NUXEO]::}/g" "$NUXEO_CONF"

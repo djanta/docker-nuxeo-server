@@ -27,6 +27,7 @@ case "$(uname -s)" in
 esac
 
 BASE=`dirname ${basedir}`
+
 #LIB_CONFIGD=$(cd "$BASE"library/config.d/; pwd)
 #LIBRARY=$(cd "$BASE"library/common/; pwd)
 #
@@ -42,6 +43,8 @@ BASE=`dirname ${basedir}`
 #source "$LIBRARY"/log.sh
 
 all=("common.sh" "helper.sh" "log.sh")
+
+# shellcheck disable=SC1090
 for file in "${all[@]}"; do source "${SHARED_LIB}/${file}"; done
 
 #regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]\.[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
@@ -73,8 +76,7 @@ if [ "$1" = 'nuxeoctl' ]; then
   # Reset an existing "$NUXEO_HOME"/configured
   [ -n "$DRY_MODE" ] && [ "$DRY_MODE" = "true" ] && log "Reset and clean up any existing configuration"
 
-  [ -n "$FORCE_RECREATE" ] && [ ! -f "$NUXEO_HOME"/configured ]  \
-    && warn "Clean up and recreate the deployment configuration" \
+  [ -n "$FORCE_RECREATE" ] && [ ! -f "$NUXEO_HOME"/configured ] && warn "Clean up and recreating configuration ..." \
     || log "No force recreation"
 
   # Re-configure nuxeo environment ...
@@ -89,8 +91,8 @@ if [ "$1" = 'nuxeoctl' ]; then
 
     [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && mergeable+=("$CONFIG_D/$DEPLOY_ENV")
     for dir in "${mergeable[@]}"; do
-      warn "Scanning ($dir) directory for deploy."
-      [ -f "$dir/nuxeo.conf" ] && warn "Overrride nuxeo.conf @ $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
+      warn "Scanning ($dir) directory for deployment ..."
+      [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
       [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
       [ -d "$dir/log" ] && mv -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
       [ -d "$dir/config" ] && mv -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
@@ -122,9 +124,9 @@ if [ "$1" = 'nuxeoctl' ]; then
 #    done
 
     info "Merging built-in config.d with user provided init.d"
-    for file in "${SHARED_LIB}"/config.d/*; do
-      [ ! -f "$config/$file" ] && debug "Copying config.d resource from $file to $config" \
-        && cp "$file" "$config"/ || debug "Target file: [$config/$file] has been contributed"
+    for file in "$SHARED_LIB/config.d"/*; do
+      [ ! -f "$config/$file" ] && debug "Copying shared resource from $file to $config" && \
+        cp "$file" "$config"/ || debug "Target file: [$config/$file] has been contributed"
     done
 
     for file in "$config"/*; do
@@ -133,7 +135,7 @@ if [ "$1" = 'nuxeoctl' ]; then
           bash < "$file" #> /dev/null 2>&1
         ;;
         *)
-         warn "$0: ignoring $file" ;;
+         warn "$0: ignoring unsupported $file" ;;
       esac
     done
 
@@ -166,7 +168,6 @@ EOF
 ## Source: $0
 ##-----------------------------------------------------------------------------
 EOF
-
     rm -rf "$config" # remove the temp directory
     nuxeoctl mp-init # Initialize the platform marketplace configuration by default.
   else
@@ -186,13 +187,13 @@ EOF
         bash < "$file" > /dev/null 2>&1
         ;;
       *.zip)
-        nuxeoctl mp-install "$file" --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
+        nuxeoctl mp-install --accept=true --relax="${NONINTERACTIVE:-true}" "$file" > /dev/null 2>&1
         ;;
       *.jar)
         cp "$file" "$NUXEO_HOME/nxserver/plugin/"
         ;;
       *.clid)
-        cp "$file" "$NUXEO_DATA"/
+        cp "$file" "$NUXEO_DATA/"
         ;;
       *)
         info "$0: ignoring $file" ;;
@@ -200,15 +201,15 @@ EOF
   done
 
   if [ -n "$NUXEO_CLID"  ] && [ "$NUXEO_INSTALL_HOTFIX" == "true" ]; then
-      nuxeoctl mp-hotfix --accept=true > /dev/null 2>&1
+      nuxeoctl mp-hotfix --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
   fi
 
   # Install packages if given
   if [ -n "$NUXEO_PACKAGES" ]; then
-    nuxeoctl mp-install "$NUXEO_PACKAGES" --relax=false --accept=true > /dev/null 2>&1
+    nuxeoctl mp-install "$NUXEO_PACKAGES" --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
   fi
 
-  for file in "${SHARED_LIB}"/init.d/*; do
+  for file in "$SHARED_LIB/init.d"/*; do
     case $file in
       *.sh)
         if [ -x "$file" ]; then
@@ -218,7 +219,7 @@ EOF
         fi
       ;;
       *)
-#       warn "$0: ignoring $file" ;;
+       warn "$0: ignoring unknown file: $file" ;;
     esac
   done
 fi

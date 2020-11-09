@@ -81,6 +81,7 @@ signal_exit() { # Handle trapped signals
 die() {
     ret=${1}
     shift
+    # shellcheck disable=SC2059
     printf "${CYAN}${@}${NORMAL}\n" 1>&2
     exit ${ret}
 }

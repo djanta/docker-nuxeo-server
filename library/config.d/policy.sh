@@ -17,7 +17,7 @@
 
 #cacerts="${TRUSTED_STORE:-$JAVA_HOME/lib/security/cacerts}"
 if [ -n "$CONFIGD" ] && [ -d "$CONFIGD/jcepolicy" ]; then
-  echo "Injecting jce policies jar"
+  echo "Injecting jce policies jar ..."
 
 #  #cd /Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/jre/lib/security
 #  #ls

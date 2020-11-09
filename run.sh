@@ -30,14 +30,16 @@ BASE=`dirname ${basedir}`
 CWD=$(pwd)
 USER_HOME="$(eval echo ~)"
 
-VARIANT=${1:-openjdk}
-VERSION=${2:-10.10}
-IMAGE_TAG="djanta/nuxeo-server-${VARIANT}:${VERSION}"
+#VARIANT=${1:-openjdk}
+#VERSION=${2:-10.10}
+#IMAGE_TAG="djanta/nuxeo-server-${VARIANT}:${VERSION}"
 
 DISTRIBUTION=${1:-debian}
-NUXEO_FULL_VERSION=${2:-8.10}
+NUXEO_FULL_VERSION=${2:-10.10}
 NUXEO_SHORT_VERSION=${NUXEO_FULL_VERSION%.*}
 VERSION_PREFIX=$(date -u +'%y.%m')
+
+
 VERSION_TAG="$VERSION_PREFIX.$NUXEO_SHORT_VERSION"
 IMAGE_TAG=djanta/nuxeo-server-"$DISTRIBUTION":"$VERSION_TAG"
 
@@ -45,5 +47,5 @@ IMAGE_TAG=djanta/nuxeo-server-"$DISTRIBUTION":"$VERSION_TAG"
 #  -p 8080:8080 -e LIVE_PROJECT=/volumes/nuxeo/projects "${IMAGE_TAG}"
 
 #docker container rm nuxeo-server-${VARIANT}-${VERSION} -f
-docker run --name nuxeo-server-"$DISTRIBUTION"-"$VERSION_TAG" -p 8080:8080 -e SKIP_WIZARD=true \
+docker run -it --name nuxeo-server-"$DISTRIBUTION"-"$VERSION_TAG" -p 8080:8080 -e SKIP_WIZARD=true \
   -e NUXEO_DEV_MODE=true "${IMAGE_TAG}"

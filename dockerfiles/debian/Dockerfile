@@ -71,6 +71,7 @@ LABEL org.label-schema.vcs-ref=$BUILD_HASH
 
 LABEL org.label-schema.docker.cmd.devel="docker run -it --name nuxeo-server-${NUXEO_VERSION} \
   -p 8080:8080 \
+  -p 8787:8787 \
   -v $(pwd)/config.d:$CONFIG_D:ro \
   -e NUXEO_DEV_MODE=true \
   $BUILD_TAG"
@@ -118,18 +119,18 @@ RUN useradd -m -d /home/$NUXEO_USER -u 1000 -s /bin/bash $NUXEO_USER
 
 # Add distribution
 RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
-#    && echo "$NUXEO_MD5 $ZIP_OUTPUT" | md5sum -c - \
-    && mkdir -p /tmp/nuxeo-distribution $(dirname $NUXEO_HOME) \
-    && unzip -q -d /tmp/nuxeo-distribution $ZIP_OUTPUT \
-    && DISTDIR=$(/bin/ls /tmp/nuxeo-distribution | head -n 1) \
-    && mv /tmp/nuxeo-distribution/$DISTDIR $NUXEO_HOME \
-    && sed -i -e "s/^org.nuxeo.distribution.package.*/org.nuxeo.distribution.package=docker/" \
-    $NUXEO_HOME/templates/common/config/distribution.properties \
-    && rm -rfv /tmp/nuxeo-distribution* \
-    && chmod +x $NUXEO_HOME/bin/*ctl $NUXEO_HOME/bin/*.sh \
-#    # For arbitrary user in the admin group
-#    && chmod g+rwX $NUXEO_HOME/bin/*ctl $NUXEO_HOME/bin/*.sh \
-    && chown -R 1000:0 $NUXEO_HOME && chmod -R g+rwX $NUXEO_HOME
+# && echo "$NUXEO_MD5 $ZIP_OUTPUT" | md5sum -c - \
+  && mkdir -p /tmp/nuxeo-distribution $(dirname $NUXEO_HOME) \
+  && unzip -q -d /tmp/nuxeo-distribution $ZIP_OUTPUT \
+  && DISTDIR=$(/bin/ls /tmp/nuxeo-distribution | head -n 1) \
+  && mv /tmp/nuxeo-distribution/$DISTDIR $NUXEO_HOME \
+  && sed -i -e "s/^org.nuxeo.distribution.package.*/org.nuxeo.distribution.package=docker/" \
+  $NUXEO_HOME/templates/common/config/distribution.properties \
+  && rm -rfv /tmp/nuxeo-distribution* \
+  && chmod +x $NUXEO_HOME/bin/*ctl $NUXEO_HOME/bin/*.sh \
+# # For arbitrary user in the admin group
+#  && chmod g+rwX $NUXEO_HOME/bin/*ctl $NUXEO_HOME/bin/*.sh \
+  && chown -R 1000:0 $NUXEO_HOME && chmod -R g+rwX $NUXEO_HOME
 
 # Protecting writeable directories to support arbitrary User IDs for OpenShift
 # https://docs.openshift.com/container-platform/3.4/creating_images/guidelines.html
@@ -151,21 +152,24 @@ RUN \
   ## Make the init.d available and writable for and by the downstream
   && chmod -R g+rwX ${SHARED_LIB}/init.d
 
-#Create and copy the .bundle file into the current working directory
+# Create and copy the .pre-bundle file into the current working directory
 RUN mkdir -pv /packages
 
+##
+# Copy the pre-bundle to be installed ...
+##
 COPY packages/* /packages/
 
 # Download all provided preset marketplace distribution
 RUN while read FILE; \
   do \
-    echo "Downloading package: ${NUXEO_MP_BASE}/${FILE}.zip"; \
+    echo "Downloading package: ${NUXEO_MP_BASE}/${FILE}.zip ..."; \
     curl -fsSL "${NUXEO_MP_BASE}/${FILE}.zip" -o /packages.d/${FILE}.zip; \
-  done < /packages/.bundle
+  done < /packages/.pre-bundle
 
 # Empty the installable package directories
 RUN \
-  rm -rf /packages
+  rm -rfv /packages
 
 # Inject NUXEO into system path
 ENV PATH $NUXEO_HOME/bin:$PATH
@@ -177,7 +181,15 @@ COPY entrypoint.sh /
 
 ENTRYPOINT ["/entrypoint.sh"]
 
+##
+# Export the default nuxeo port ...
+##
 EXPOSE 8080
+
+##
+# Exporting the debug port if needed ...
+##
+EXPOSE 8787
 
 CMD ["nuxeoctl", "console"]
 
