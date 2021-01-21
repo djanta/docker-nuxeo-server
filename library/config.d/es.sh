@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# elasticsearch.sh - This script will be use to provide our platform deployment architecture
+# es.sh - This script will be use to provide our platform deployment architecture
 #
 # Copyright 2019, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -12,8 +12,7 @@
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License at <http://www.gnu.org/licenses/> for
-# more details.
+# GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
 #TPL_NAME="elasticsearch"

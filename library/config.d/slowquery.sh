@@ -20,5 +20,9 @@
 #org.nuxeo.vcs.query.log_min_duration_ms=100
 #org.nuxeo.dbs.query.log_min_duration_ms=100
 
-if [ -n "$NUXEO_VCS_MIN_DURATION" ]; then echo "org.nuxeo.vcs.query.log_min_duration_ms=$NUXEO_VCS_MIN_DURATION" >> "$NUXEO_CONF"; fi
-if [ -n "$NUXEO_DBS_MIN_DURATION" ]; then echo "org.nuxeo.dbs.query.log_min_duration_ms=$NUXEO_DBS_MIN_DURATION" >> "$NUXEO_CONF"; fi
+#if [ -n "$NUXEO_VCS_MIN_DURATION" ]; then echo "org.nuxeo.vcs.query.log_min_duration_ms=$NUXEO_VCS_MIN_DURATION" >> "$NUXEO_CONF"; fi
+#if [ -n "$NUXEO_DBS_MIN_DURATION" ]; then echo "org.nuxeo.dbs.query.log_min_duration_ms=$NUXEO_DBS_MIN_DURATION" >> "$NUXEO_CONF"; fi
+
+if [ -n "$NUXEO_VCS_SLOWQUERY_DURATION" ]; then echo "org.nuxeo.vcs.query.log_min_duration_ms=${NUXEO_VCS_SLOWQUERY_DURATION}" >> "$NUXEO_CONF"; fi
+## For DBS (since Nuxeo Platform 8.3)
+if [ -n "$NUXEO_DBS_SLOWQUERY_DURATION" ]; then echo "org.nuxeo.dbs.query.log_min_duration_ms=${NUXEO_DBS_SLOWQUERY_DURATION}" >> "$NUXEO_CONF"; fi

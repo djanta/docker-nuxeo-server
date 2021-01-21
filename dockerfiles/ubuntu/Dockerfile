@@ -6,7 +6,7 @@ ARG BUILD_DISTRIB
 ##
 # Understanding build args: https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
 ##
-FROM djanta/nuxeo-sdk:${BUILD_SDK_VERSION:-20.08}-${BUILD_DISTRIB:-debian}
+FROM djanta/nuxeo-sdk:${BUILD_SDK_VERSION:-20.08}-${BUILD_DISTRIB:-ubuntu}
 
 ARG BUILD_DATE
 ARG BUILD_VERSION
@@ -31,6 +31,7 @@ ARG NUXEO_VERSION=${BUILD_NX_VERSION:-10.10}
 
 ENV NUXEO_USER nuxeo
 ENV NUXEO_HOME $NUXEO_BASE/server
+#ENV HOME $NUXEO_BASE/server
 ENV HOME $NUXEO_HOME
 ENV NUXEO_TPL_HOME $NUXEO_HOME/templates
 
@@ -43,8 +44,6 @@ ENV NUXEO_TMP=$NUXEO_HOME/tmp
 
 ENV CONFIG_D "/var/lib/nuxeo/config.d"
 ENV PACKAGE_D "/var/lib/nuxeo/package.d"
-#ENV INIT_D "/var/lib/nuxeo/init.d"
-#ENV SHARED_D "/var/lib/nuxeo/shared"
 
 LABEL maintainer="DJANTA, LLC <cloud.packager@djanta.io>"
 LABEL author="Koffi Stanislas ASSOUTOVI"
@@ -127,16 +126,19 @@ RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
 RUN \
   mkdir -p $NUXEO_DATA \
   && chmod -Rv g+rw $NUXEO_DATA \
+
   && mkdir -pv $NUXEO_LOG \
   && chmod -Rv g+rw $NUXEO_LOG \
+
   && mkdir -pv $NUXEO_RUN \
   && chmod -Rv g+rw $NUXEO_RUN \
+
   && mkdir -pv $NUXEO_TMP \
   && chmod -Rv g+rwx $NUXEO_TMP \
+
   && mkdir -pv $CONFIG_D \
   && chmod -Rv g+rx $CONFIG_D \
 
-# package.d configuration ...
   && mkdir -pv /packages.d \
   && chmod -R g+rx /packages.d \
 

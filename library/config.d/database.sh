@@ -16,6 +16,10 @@
 # more details.
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC1090
+source "/library/common.sh"
+source "/library/log.sh"
+
 if [ -n "$NUXEO_DB_TYPE" ] && [ -n "$NUXEO_DB_HOST" ]; then
 
   perl -p -i -e "s/^#?nuxeo.db.host=.*$/nuxeo.db.host=${NUXEO_DB_HOST}/g" "$NUXEO_CONF"
@@ -26,6 +30,15 @@ if [ -n "$NUXEO_DB_TYPE" ] && [ -n "$NUXEO_DB_HOST" ]; then
 
   # append the database type as template
   perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_DB_TYPE}/g" "$NUXEO_CONF"
+
+  ## adding the database cluster template ...
+  if [ "$NUXEO_DB_QUARTZ" == "true" ]; then
+    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_DB_TYPE}-quartz-cluster/g" "$NUXEO_CONF"
+    QUARTZ_SQL_FILE="$NUXEO_HOME/templates/${NUXEO_DB_TYPE}-quartz-cluster/bin/create-quartz-tables.sql"
+    if [ -f "$QUARTZ_SQL_FILE" ]; then
+      warn "Please make sure to execute the following script: ($QUARTZ_SQL_FILE) at least once, against your database: ($NUXEO_DB_TYPE)"
+    fi
+  fi
 
 #  else
 #    #error_exit "You have to setup a NUXEO_DB_HOST if not using default DB type"

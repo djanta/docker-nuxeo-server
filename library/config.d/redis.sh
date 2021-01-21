@@ -16,7 +16,20 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-#if [ -n "$NUXEO_REDIS_HOST" ] && [ -f "$NUXEO_CONF" ]; then
+# shellcheck disable=SC2129
+if [ "$NUXEO_REDIS_ENABLED" == "true" ] && [ -n "$NUXEO_REDIS_HOST" ]; then
+
+  echo "nuxeo.redis.enabled=$NUXEO_REDIS_ENABLED" >> "$NUXEO_CONF"
+  echo "nuxeo.redis.host=$NUXEO_REDIS_HOST" >> "$NUXEO_CONF"
+  echo "nuxeo.redis.port=${NUXEO_REDIS_PORT:-6379}" >> "$NUXEO_CONF"
+  echo "nuxeo.redis.prefix=${NUXEO_REDIS_PREFIX:-nuxeo:}" >> "$NUXEO_CONF"
+  echo "nuxeo.work.queuing=${NUXEO_REDIS_WORK_QUEUING:-redis}" >> "$NUXEO_CONF"
+
+  # Timeout and sizing configuration
+  echo "nuxeo.redis.maxIdle=${NUXEO_REDIS_MAX_IDLE:-8}" >> "$NUXEO_CONF"
+  echo "nuxeo.redis.maxTotal=${NUXEO_REDIS_MAX_TOTAL:-16}" >> "$NUXEO_CONF"
+  echo "nuxeo.redis.timeout=${NUXEO_REDIS_TIMEOUT-2000}" >> "$NUXEO_CONF"
+
 #    ## Make sure we crate the target "redis" directory anyway ...
 #    mkdir -p "$NUXEO_TPL_HOME"/redis
 #
@@ -25,10 +38,6 @@
 #nuxeo.template.includes=default
 #redis.target=.
 #
-## Redis specific configuration
-#nuxeo.redis.enabled=${NUXEO_REDIS_ENABLED:=true}
-#nuxeo.redis.host=${NUXEO_REDIS_HOST}
-#nuxeo.redis.port=${NUXEO_REDIS_PORT:=6379}
 #
 ## Redis is automatically enabled when this template is used
 #nuxeo.redis.prefix=${NUXEO_REDIS_PREFIX:=nuxeo:}
@@ -59,6 +68,6 @@
 ## by default use the KeyValueBlobTransientStore from the common template
 ##nuxeo.transientstore.provider=redis
 #EOF
-#
-#    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${1}/g" "$NUXEO_CONF"
-#fi
+
+  perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,redis/g" "$NUXEO_CONF"
+fi

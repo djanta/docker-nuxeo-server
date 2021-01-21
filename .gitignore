@@ -56,5 +56,14 @@ Thumbs.db
 *.swp
 
 # ignore local file only
-run.sh
-build.sh
+#run.sh
+#build.sh
+
+# Temporally uncommitted (bloked) file
+library/config.d/heap.sh
+
+# Excludes unfinalized distribution docker files
+dockerfiles/fedora
+dockerfiles/opensuse
+dockerfiles/rhel
+dockerfiles/centos

@@ -15,9 +15,13 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC1090
+source "/library/common.sh"
+source "/library/log.sh"
+
 #cacerts="${TRUSTED_STORE:-$JAVA_HOME/lib/security/cacerts}"
-if [ -n "$CONFIGD" ] && [ -d "$CONFIGD/jcepolicy" ]; then
-  echo "Injecting jce policies jar ..."
+if [ -d "$CONFIGD/jcepolicy" ]; then
+  log "Importing JCE policy files ..."
 
 #  #cd /Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/jre/lib/security
 #  #ls

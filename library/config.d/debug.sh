@@ -18,7 +18,7 @@
 ##
 # Enable java debug option by default only of NUXEO_DEV_MODE is activated
 ##
-if [ "$NUXEO_DEV_MODE" == "true" ] && [ -n "$DEBUG" ]; then
-    echo "JAVA_OPTS=\$JAVA_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,address=${DEBUG_PORT:-8787}," \
+if [ "$NUXEO_DEV_MODE" == "true" ] && [ -n "$DEBUG" == "true" ]; then
+  echo "JAVA_OPTS=\$JAVA_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,address=${DEBUG_PORT:-8787}," \
       "server=${DEBUG_SERVER_SIDE:-y},suspend=${DEBUG_SUSPEND:-n}" >> "$NUXEO_CONF"
 fi

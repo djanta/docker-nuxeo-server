@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# properties.sh - This script will be use to provide our platform deployment architecture
+# 001-default.sh - This script will be use to provide our platform deployment architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -19,9 +19,6 @@
 #########
 # Credit: https://doc.nuxeo.com/nxdoc/configuration-parameters-index-nuxeoconf/
 #########
-
-#set -ex
-set -x
 
 if [ "$NUXEO_DEV_MODE" == "true" ]; then perl -p -i -e "s/^#?org.nuxeo.dev=.*$/org.nuxeo.dev=${NUXEO_DEV_MODE}/g" "$NUXEO_CONF"; fi
 if [ -n "$VIRTUAL_HOST" ]; then perl -p -i -e "s/^#?nuxeo.virtual.host=.*$/nuxeo.virtual.host=${VIRTUAL_HOST}/g" "$NUXEO_CONF"; fi

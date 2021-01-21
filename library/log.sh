@@ -14,6 +14,8 @@
 #   limitations under the License.
 #
 
+# shellcheck disable=SC2034
+
 PROGNAME=${0##*/}
 datestamp=$(date +%Y%m%d%H%M%S)
 DEV_MODE=0

@@ -14,6 +14,8 @@
 #   limitations under the License.
 #
 
+# shellcheck disable=SC2034
+
 PROGNAME=${0##*/}
 datestamp=$(date +%Y%m%d%H%M%S)
 DEV_MODE=0
@@ -25,6 +27,11 @@ case "$(uname -s)" in
   Linux) basedir=$(dirname "$(readlink -f "$0" || echo "$argv0")");;
   *CYGWIN*) basedir=`cygpath -w "$basedir"`;;
 esac
+
+# Detect java command
+if [ -z "$JAVA" ]; then
+  export JAVA=java
+fi
 
 ERROR_BOLD="\e[1;31m"
 ERROR_NORMAL="\e[0;31m"
@@ -49,6 +56,59 @@ if [[ -n "$COLORS" ]] && [[ ! "$COLORS" =~ ^(always|yes|true|1)$ ]]; then
   unset YELLOW="\\e[0;33m"
   unset NORMAL="\\e[0;0m"
 fi
+
+detect_javahome () {
+  if [ -z "$JAVA_HOME" ]; then
+    if [ -x /usr/libexec/java_home ]; then
+      export JAVA_HOME=`/usr/libexec/java_home`
+    else
+      JAVA=`command -v $JAVA`
+
+      # follow symlinks
+      while [ -h "$JAVA" ]; do
+        ls=`ls -ld "$JAVA"`
+        link=`expr "$ls" : '.*-> \(.*\)$'`
+        case "$link" in
+          /*) JAVA="$link" ;;
+          *)  JAVA=`dirname "$JAVA"`/"$link" ;;
+        esac
+        JAVA_HOME=`dirname "$JAVA"`
+        export JAVA_HOME=`dirname "$JAVA_HOME"`
+      done
+    fi
+  fi
+}
+
+##
+# Comment the given matching line from the specified file
+# Credit: https://stackoverflow.com/questions/24889346/how-to-uncomment-a-line-that-contains-a-specific-string-using-sed
+##
+comment () {
+  if [ "$#" -eq 0 ]; then
+    error_exit "Insuffisant function argument. At least the line to comment and the target file must be specified."
+  elif [ ! -f "$1" ]; then
+    error_exit "The matching expression to comment must be define"
+  elif [ ! -f "$2" ]; then
+   error_exit "The given file: (${1}0 must be an existing file."
+  fi
+
+  sed -i '/[^#]/ s/\(^${1}.*$\)/#\ \1/' "$2"
+}
+
+##
+# Uncomment the given matching line from the specified file
+##
+uncomment () {
+  if [ "$#" -eq 0 ]; then
+    error_exit "Insuffisant function argument. At least the line to comment and the target file must be specified."
+  elif [ ! -f "$1" ]; then
+    error_exit "The matching expression to comment must be define"
+  elif [ ! -f "$2" ]; then
+   error_exit "The given file: (${1}0 must be an existing file."
+  fi
+
+  sed -i '/^#.*${1}.*$/s/^#\ //' "$2"
+}
 
 clean_up() { # Perform pre-exit housekeeping
   return
@@ -139,6 +199,13 @@ exists() {
   done
 }
 
+####
+# Check whether the given command has existed
+###
+command_exists () {
+  command -v "$1" >/dev/null 2>&1;
+}
+
 export_properties() {
   if [ "$#" -eq 0 ]; then
     error_exit "Insuffisant function argument. At least the target proprerties file must be specified."
@@ -153,11 +220,4 @@ export_properties() {
     colored --cyan "Export ${k} -> ${v}"
     $(export ${k}="$v")
   done < ${1}
-}
-
-####
-# Check whether the given command has existed
-###
-command_exists () {
-  command -v "$1" >/dev/null 2>&1;
 }

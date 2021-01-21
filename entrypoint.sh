@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# docker-entrypoint.sh - This script will be use to provide our platform deployment docker-entrypoint.sh architecture
+# entrypoint.sh - This script will be use to provide our platform deployment entrypoint.sh architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,14 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-set -e
+# shellcheck disable=SC2034
+# shellcheck disable=SC2199
+
+
+if [[ "x $@" =~ " -d" || "x $@" =~ " --debug" || -n "$RUN_DEBUG" || -n "$LAUNCHER_DEBUG" ]]; then
+  set -x
+#  set -ex
+fi
 
 argv0=$(echo "$0" | sed -e 's,\\,/,g')
 basedir=$(dirname "$(readlink "$0" || echo "$argv0")")
@@ -28,24 +35,13 @@ esac
 
 BASE=`dirname ${basedir}`
 
-#LIB_CONFIGD=$(cd "$BASE"library/config.d/; pwd)
-#LIBRARY=$(cd "$BASE"library/common/; pwd)
-#
-## Source the given script ...
-#HELPER=$LIBRARY/helper.sh
-#COMMON=$LIBRARY/common.sh
-#WATCHER=$LIBRARY/watcher.sh
-#
-## shellcheck disable=SC1090
-#[[ -f "$HELPER" ]] && source "$HELPER" && source "${COMMON}" || \
-#  echo "[entrypoint] Following resource: [$HELPER] cannot be found ;("
-#
-#source "$LIBRARY"/log.sh
-
 all=("common.sh" "helper.sh" "log.sh")
 
 # shellcheck disable=SC1090
-for file in "${all[@]}"; do source "${SHARED_LIB}/${file}"; done
+for file in "${all[@]}"; do source "/library/${file}"; done
+
+# Detecting java home after sourcing all shared libraries ...
+detect_javahome
 
 #regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]\.[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
 #url='http://www.google.com/test/link.php'
@@ -56,10 +52,8 @@ for file in "${all[@]}"; do source "${SHARED_LIB}/${file}"; done
 #    echo "$url IS NOT valid"
 #fi
 
-## Fix syntax: https://github.com /koalaman/shellcheck/wiki/SC2236
+## Fix syntax: https://github.com/koalaman/shellcheck/wiki/SC2236
 [[ -n "${MAX_FD//}" ]] && ULIMIT="${MAX_FD}" || ULIMIT=63536
-
-happy "Max ULIMIT: ${ULIMIT}"
 
 # Allow supporting arbitrary user id
 if ! whoami &> /dev/null; then
@@ -69,35 +63,20 @@ if ! whoami &> /dev/null; then
   fi
 fi
 
-[ -f /var/run/docker.sock ] && warn "You're now running docker in docker"
+# shellcheck disable=SC2034
+# shellcheck disable=SC2015
+[ -f /var/run/docker.sock ] && warn "You're now running docker in docker" && DOCKER_IN_DOCKER=true || echo ""
+[ -n "$JAVA_HOME" ] && debug "Java Home detected at: $JAVA_HOME" || warn "Java Home not found!"
 
 if [ "$1" = 'nuxeoctl' ]; then
 
   # Reset an existing "$NUXEO_HOME"/configured
-  [ -n "$DRY_MODE" ] && [ "$DRY_MODE" = "true" ] && log "Reset and clean up any existing configuration"
-
+  [ "$DRY_MODE" = "true" ] && log "Reset and clean up any existing configuration"
   [ -n "$FORCE_RECREATE" ] && [ ! -f "$NUXEO_HOME"/configured ] && warn "Clean up and recreating configuration ..." \
     || log "No force recreation"
 
   # Re-configure nuxeo environment ...
   if [ ! -f "$NUXEO_HOME"/configured ]; then
-    mergeable=("$CONFIG_D")
-    TMPD="/tmp/$(date -u +'%Y%m%dT_%H%M%SZ')"
-
-    mkdir -p "$TMPD"
-
-    [ -z "$NUXEO_CONNECT_TOKEN" ] && warn "Missing NUXEO_CONNECT_TOKEN variable."
-    [ -z "$NUXEO_CONNECT_USERID" ] && warn "Missing NUXEO_CONNECT_USERID variable."
-
-    [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && mergeable+=("$CONFIG_D/$DEPLOY_ENV")
-    for dir in "${mergeable[@]}"; do
-      warn "Scanning ($dir) directory for deployment ..."
-      [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
-      [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
-      [ -d "$dir/log" ] && mv -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
-      [ -d "$dir/config" ] && mv -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
-      [ -d "$dir/templates" ] && mv -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
-    done
 
     ######
     # NUXEO INTERNAL PROPERTIES CONFIGURATION
@@ -107,37 +86,32 @@ if [ "$1" = 'nuxeoctl' ]; then
     [ -n "$NUXEO_URL" ] && echo "nuxeo.url=$NUXEO_URL" >> "$NUXEO_CONF" || echo "" > /dev/null 2>&1
 
     # Skip Nuxeo Install & Configuration the first time
-    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF"
+    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF" \
+      || perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=true/g" "$NUXEO_CONF"
 
 #    [ -d "$NUXEO_LOG" ] && perl -p -i -e "s/^#?nuxeo.log.dir=.*$/nuxeo.log.dir=\/${NUXEO_LOG#?}/g" "$NUXEO_CONF"
 #    [ -d "$NUXEO_RUN" ] && perl -p -i -e "s/^#?nuxeo.pid.dir=.*$/nuxeo.pid.dir=\/${NUXEO_RUN#?}/g" "$NUXEO_CONF"
 #    [ -d "$NUXEO_DATA" ] && perl -p -i -e "s/^#?nuxeo.data.dir=.*$/nuxeo.data.dir=\/${NUXEO_DATA#?}/g" "$NUXEO_CONF"
 #    [ -d "$NUXEO_TMP" ] && perl -p -i -e "s/^#?nuxeo.tmp.dir=.*$/nuxeo.tmp.dir=\/${NUXEO_TMP#?}/g" "$NUXEO_CONF"
 
-    config="$TMPD"/@config.d
-    mkdir -p "$config"
+    # Nuxeo connect token control
+    [ -z "$NUXEO_CONNECT_TOKEN" ] && warn "Missing NUXEO_CONNECT_TOKEN variable."
+    [ -z "$NUXEO_CONNECT_USERID" ] && warn "Missing NUXEO_CONNECT_USERID variable."
 
-#    # Copy user shared configuration ...
-#    for file in "$CONFIGD/init.d"/*; do
-#      debug "Copying init.d resource from $file -> $config"
-#      cp "$file" "$config"/
-#    done
+    # instance.clid
+    if [ -n "$NUXEO_CLID" ]; then
+      # Replace --  by a carriage return
+      NUXEO_CLID="${NUXEO_CLID/--/\\n}"
+      printf "%b\n" "$NUXEO_CLID" >> "$NUXEO_DATA"/instance.clid
+    fi
 
-    info "Merging built-in config.d with user provided init.d"
-    for file in "$SHARED_LIB/config.d"/*; do
-      [ ! -f "$config/$file" ] && debug "Copying shared resource from $file to $config" && \
-        cp "$file" "$config"/ || debug "Target file: [$config/$file] has been contributed"
-    done
+    # Install hotfixes from nuxeo remote marketplace platform
+    [ -n "$NUXEO_CLID"  ] && [ "$INSTALL_HOTFIX" == "true" ] && nuxeoctl mp-hotfix --accept=true \
+      --relax=true > /dev/null 2>&1 || info "Hotfixes installation deactivated"
 
-    for file in "$config"/*; do
-      case $file in
-        *.sh)
-          bash < "$file" #> /dev/null 2>&1
-        ;;
-        *)
-         warn "$0: ignoring unsupported $file" ;;
-      esac
-    done
+    # Install packages if any given
+    [ -n "$NUXEO_PACKAGES" ] && nuxeoctl mp-install "$NUXEO_PACKAGES" --accept=true \
+      --relax=true > /dev/null 2>&1 || info "No package to be installed"
 
 #    if [ -n "$NUXEO_TRANSIENT_STORE" ]; then
 #      #removes transients stores if exists to allow symbolic link creation
@@ -147,7 +121,90 @@ if [ "$1" = 'nuxeoctl' ]; then
 #      ln -s $NUXEO_TRANSIENT_STORE $NUXEO_DATA/transientstores/default
 #    fi
 
+    ######
+    # EXTERNAL SCRIPT CONFIGURATION
+    ######
+
+    if [ -d "$CONFIG_D" ]; then
+      deploy=("$CONFIG_D")
+      #TMPD="/tmp/$(date -u +'%Y%m%dT_%H%M%SZ')"
+      TMPD="/tmp/$(date -u +'%Y%m%d%H%M%S')"
+      mkdir -pv "$TMPD"/config.d
+
+      # When user define a specific environment to use
+      [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && info "Using user defined deployment environment: \
+        $DEPLOY_ENV" && deploy+=("$CONFIG_D/$DEPLOY_ENV") || debug "no deployment environment defined"
+
+      for dir in "${deploy[@]}"; do
+        warn "Scanning ($dir) directory for deployment ..."
+        [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
+        [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
+        [ -d "$dir/log" ] && mv -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
+        [ -d "$dir/config" ] && mv -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
+        [ -d "$dir/templates" ] && mv -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
+
+        # Copy all user defined config.d
+        [ -d "$dir/config.d" ] && mv -Rv "$dir/config.d/*" "$TMPD/config.d" || echo "" > /dev/null 2>&1
+      done
+
+  #    # Copy user shared configuration ...
+  #    for file in "$CONFIGD/init.d"/*; do
+  #      debug "Copying init.d resource from $file -> "$TMPD"/config.d"
+  #      cp "$file" "$TMPD"/config.d/
+  #    done
+
+      #info "Merging built-in config.d with user provided init.d"
+      for file in /library/config.d/*; do
+        [ ! -f "$TMPD/config.d/$file" ] && debug "Copying shared file: $file to $TMPD/config.d" \
+          && cp "$file" "$TMPD"/config.d/ || debug "Target file: [$TMPD/config.d/$file] has been contributed"
+      done
+
+      for file in "$TMPD"/config.d/*; do
+        debug "About to execute file: $file"
+        case $file in
+          *.sh)
+            bash < "$file" #> /dev/null 2>&1
+          ;;
+          *)
+           warn "$0: ignoring unsupported $file" ;;
+        esac
+      done
+
+      package_d=("$PACKAGE_D")
+      for dir in "${deploy[@]}"; do
+        for scope in "package.d/hotfixes" "package.d/addons"; do
+          [ -d "$dir/$scope" ] && package_d+=("$dir/$scope")
+        done
+      done
+
+      # Install all external provisioned packages
+      for dir in "${package_d[@]}"; do
+        if [ -d "$dir" ]; then
+          info "Scanning folder: $dir"
+          # shellcheck disable=SC2045
+          for package in $(ls "$dir"); do
+            case $package in
+              *.zip)
+                debug "Installing package: ($package), from local resource."
+                nuxeoctl mp-install --accept=true --relax=true "$package" > /dev/null 2>&1
+                ;;
+              *.jar)
+                debug "Copying jar file: ($package), from local resource as ."
+                cp -v "$package" "$NUXEO_HOME/nxserver/plugins/"
+                ;;
+              *)
+                warn "$0: ignoring $package"
+                ;;
+            esac
+          done
+        fi
+      done
+    else
+      debug "Missing use defined shared resource volume: $CONFIG_D"
+    fi
+
   cat << EOF >> "$NUXEO_CONF"
+
 ##-----------------------------------------------------------------------------
 ## Auto generated configuration at runtime.
 ## Date: $(date '+%Y-%m-%d %T.%3N')
@@ -157,8 +214,8 @@ nuxeo.log.dir=$NUXEO_LOG
 nuxeo.pid.dir=$NUXEO_RUN
 nuxeo.data.dir=$NUXEO_DATA
 nuxeo.tmp.dir=$NUXEO_TMP
-
 ### BEGIN - DO NOT EDIT BETWEEN BEGIN AND END ###
+
 EOF
 
     cat << EOF >> "$NUXEO_HOME/configured"
@@ -167,63 +224,35 @@ EOF
 ## Date: $(date '+%Y-%m-%d %T.%3N')
 ## Source: $0
 ##-----------------------------------------------------------------------------
+
+export TMPD_BASE=$TMPD
 EOF
-    rm -rf "$config" # remove the temp directory
-    nuxeoctl mp-init # Initialize the platform marketplace configuration by default.
+    #rm -rfv "$TMPD"/config.d # remove the temp directory
   else
+    cat "$NUXEO_HOME"/configured
     happy "Container already configured ..."
+
+    # shellcheck disable=SC1090
+    # Soure to export all preview variables ...
+    source "$NUXEO_HOME"/configured
   fi
-
-  # instance.clid
-  if [ -n "$NUXEO_CLID" ]; then
-    # Replace --  by a carriage return
-    NUXEO_CLID="${NUXEO_CLID/--/\\n}"
-    printf "%b\n" "$NUXEO_CLID" >> "$NUXEO_DATA"/instance.clid
-  fi
-
-  for file in /packages.d/*; do
-    case $file in
-      *.sh)
-        bash < "$file" > /dev/null 2>&1
-        ;;
-      *.zip)
-        nuxeoctl mp-install --accept=true --relax="${NONINTERACTIVE:-true}" "$file" > /dev/null 2>&1
-        ;;
-      *.jar)
-        cp "$file" "$NUXEO_HOME/nxserver/plugin/"
-        ;;
-      *.clid)
-        cp "$file" "$NUXEO_DATA/"
-        ;;
-      *)
-        info "$0: ignoring $file" ;;
-    esac
-  done
-
-  if [ -n "$NUXEO_CLID"  ] && [ "$NUXEO_INSTALL_HOTFIX" == "true" ]; then
-      nuxeoctl mp-hotfix --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
-  fi
-
-  # Install packages if given
-  if [ -n "$NUXEO_PACKAGES" ]; then
-    nuxeoctl mp-install "$NUXEO_PACKAGES" --accept=true --relax="${NONINTERACTIVE:-true}" > /dev/null 2>&1
-  fi
-
-  for file in "$SHARED_LIB/init.d"/*; do
-    case $file in
-      *.sh)
-        if [ -x "$file" ]; then
-          bash "$file" &
-        else
-          error "$file cannot be executed."
-        fi
-      ;;
-      *)
-       warn "$0: ignoring unknown file: $file" ;;
-    esac
-  done
 fi
 
-exec "$@"
+## From here we can re-run the background scripts ...
+#for background in "$SHARED_D"/init.d/*; do
+#  case $background in
+#    *.sh)
+#      if [ -x "$background" ]; then
+#        bash "$background" &
+#      else
+#        error "$background is not or has no executable permission"
+#      fi
+#    ;;
+#    *)
+#     warn "$0: ignoring unknown file: $background" ;;
+#  esac
+#done
+
+[ "$1" = 'nuxeoctl' ] && [ -n "$NUXEO_CTL_DEBUG" ] && exec "$@" "-d" "$NUXEO_CTL_DEBUG" || exec "$@"
 
 #trap cleanup EXIT

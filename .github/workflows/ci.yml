@@ -14,57 +14,30 @@
 # limitations under the License.
 #
 
-name: LTS Master
+name: CI
 
-# On push event ...
 on:
   # Trigger the workflow on push or pull request, but only for the master branch
   push:
     branches:
-      - master-xxxxxxxxxx
+      - master
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-#        version: [8, 11, 14, 15, 16]
-        arch: [debian, ubuntu]
     steps:
-      #      - name: Check Commit Type
-      #        uses: gsactions/commit-message-checker@v1
-      #        with:
-      #          pattern: '\[[^]]+\] .+$'
-      #          flags: 'gm'
-      #          error: 'Your first line has to contain a commit type like "[BUGFIX]".'
-      #      - name: Check Line Length
-      #        uses: gsactions/commit-message-checker@v1
-      #        with:
-      #          pattern: '^[^#].{74}'
-      #          error: 'The maximum line length of 74 characters is exceeded.'
-      #      - name: Check for Resolves / Fixes
-      #        uses: gsactions/commit-message-checker@v1
-      #        with:
-      #          pattern: '^.+(Resolves|Fixes): \#[0-9]+$'
-      #          error: 'You need at least one "Resolves|Fixes: #<issue number>" line.'
-
-      #      - name : GITHUB CONTEXT
-      #        env:
-      #          GITHUB_CONTEXT: ${{ toJson(github) }}
-      #        run: echo "$GITHUB_CONTEXT"
-
-      - name: Checking out - (${{ matrix.arch }})
+      - name: Checking out
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.GH_TOKEN }}
           submodules: true
 
-      - name: Submodules Sync - (${{ matrix.arch }})
+      - name: Submodules Sync
         shell: bash
         run: |
           git submodule sync --recursive
           git submodule update --init --recursive --remote --merge --force --depth=3
 
-      - name: GitHub credentials configuration - ${{ matrix.arch }}
+      - name: GitHub credentials configuration
         shell: bash
         run: |
           git config user.name "${{ secrets.GH_USER }}"
@@ -74,50 +47,77 @@ jobs:
 
       - name: Pull docker slimify
         env:
-          IMAGE: dslim/docker-slim:latest
+          DOCKER_IMAGE: dslim/docker-slim:latest
         run: |
-          docker pull "$IMAGE"
+          docker pull "$DOCKER_IMAGE"
 
-      - name: Build Image & Deploy develop tag - (${{ matrix.arch }})
+      - name: Cloning docker official
+        shell: bash
+        run: |
+          git clone https://github.com/docker-library/official-images.git ~/official-images
+
+      - name: Docker login
+        shell: bash
+        env:
+          DOCKER_REGISTRY: docker.io
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin ${DOCKER_REGISTRY}
+
+      - name: Build Image & Deploy
         env:
           GITHUB_USERNAME: ${{ secrets.GH_USER }}
           GH_USER: ${{ secrets.GH_USER }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-
-          PROJECT_ID: nuxeo-sdk
-          ACCOUNT_ID: djanta
-          IMAGE_BASE: $ACCOUNT_ID/$PROJECT_ID
-          IMAGE_TAG: $IMAGE_BASE:$VERSION
-          GITHUB_IMAGE_TAG: $PROJECT_ID:$VERSION
-          GITHUB_IMAGE_BRANCH: $GITHUB_IMAGE_TAG-$TRAVIS_BRANCH
-          GITHUB_REGISTRY: docker.pkg.github.com
-          GITHUB_SLOG_REGISTRY: $GITHUB_REGISTRY/$GITHUB_REPOSITORY
+          JDK_VARIANT: jdk
         run: |
-          image_id=$ACCOUNT_ID/$PROJECT_ID-${{ matrix.arch }}:develop
-          docker --debug build -t $image_id \
-            --build-arg BUILD_VERSION=$(date -u +'%y.%m') \
-            --build-arg BUILD_HASH=$(git rev-parse HEAD) \
-            --build-arg RELEASE_VERSION=$(date -u +'%y.%m') \
-            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-            --file $(pwd)/dockerfiles/${{ matrix.arch }}/Dockerfile .
+          LTS=(7.10 8.10 9.10 10.10)
+          JDK=(8 11 13 14)
+          DISTRIBUTIONS=(debian ubuntu)
+          YEAR=$(date -u +'%y')
+          MONTH=$(date -u +'%m')
 
-      - name: 'Run Docker test'
-        shell: bash
-        env:
-          IMAGE: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
-        run: |
-          git clone https://github.com/docker-library/official-images.git ~/official-images
-          ~/official-images/test/run.sh $IMAGE
+          for jdkver in "${JDK[@]}"; do \
+            JDK_VERSION="$jdkver"; \
+            for lts in "${LTS[@]}"; do \
+              NUXEO_LTS="$lts"; \
+              NUXEO_SHORT_LTS=${NUXEO_LTS%.*}; \
+              SDK_VERSION="${JDK_VERSION}".$(date -u +'%y.%m'); \
+              VERSION_SURFIX=${YEAR}$((10#$MONTH)); \
+              BUILD_VERSION=$(date -u +'%y.%m.%d')-"$NUXEO_SHORT_LTS"; \
+              VERSION_TAG="$NUXEO_SHORT_LTS.$JDK_VERSION.$VERSION_SURFIX"; \
+              for dist in "${DISTRIBUTIONS[@]}"; do \
+                FULL_TAG="$VERSION_TAG-$dist"; \
+                docker --debug build -t djanta/nuxeo-server:"$FULL_TAG" \
+                --build-arg BUILD_VERSION="$VERSION_TAG" \
+                --build-arg BUILD_HASH=$(git rev-parse HEAD) \
+                --build-arg RELEASE_VERSION="$VERSION_TAG" \
+                --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+                --build-arg BUILD_SDK_VERSION="$SDK_VERSION" \
+                --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
+                --build-arg BUILD_DISTRIB="$dist" \
+                --file $(pwd)/dockerfiles/$dist/Dockerfile . ;\
 
-      - name: Snyk vulnerabilities check
-        uses: snyk/actions/docker@master
-        fail-fast: false
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
-          args: --severity-threshold=high --file=dockerfiles/${{ matrix.arch }}/.vulnerability
+                docker push djanta/nuxeo-server:"$FULL_TAG"; \
+            done; \
+          done
+
+#      - name: 'Run Docker test'
+#        shell: bash
+#        env:
+#          IMAGE: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
+#        run: |
+#          git clone https://github.com/docker-library/official-images.git ~/official-images
+#          ~/official-images/test/run.sh $IMAGE
+
+#      - name: Snyk vulnerabilities check
+#        uses: snyk/actions/docker@master
+#        fail-fast: false
+#        env:
+#          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+#        with:
+#          image: djanta/nuxeo-sdk-${{ matrix.arch }}:develop
+#          args: --severity-threshold=high --file=dockerfiles/${{ matrix.arch }}/.vulnerability
 
 #      - name: Run Gitrivy Vulnerability check
 #        uses: homoluctus/gitrivy@v2.0.0

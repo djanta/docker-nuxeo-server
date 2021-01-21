@@ -15,23 +15,33 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC1090
+source "/library/common.sh"
+source "/library/log.sh"
+
 cacerts="${TRUSTED_STORE:-$JAVA_HOME/lib/security/cacerts}"
+
+# shellcheck disable=SC2045
 if [ -f "$cacerts" ]; then
-  echo "Certificate trusted store found at -> $cacerts"
-  if [ -n "$CONFIGD" ] && [ -d "$CONFIGD/certs" ]; then
-    for file in "$CONFIGD/certs"/*; do
+  log "Certificate trusted store found at -> $cacerts"
+  if [ -d "$CONFIGD/certs" ]; then
+    for file in $(ls "$CONFIGD/certs"/); do
       case $file in
         *.cer | *.pem | *.der)
+          debug "Importing certificate file from: $file, with alias: ${file%.*}"
+
           #if [ -n "$DEBUG" ]; then keytool -v -printcert -file "$cacerts"; fi
-          keytool -importcert -alias "${file%.*}" -keystore "$cacerts" \
-            -file "$file" -storepass "${TRUSTED_PASSWORD:-changeit}"
+          keytool -importcert -alias "${file%.*}" -keystore "$cacerts" -file "$file" -storepass "${TRUSTED_PASSWORD:-changeit}"
           ;;
         *)
-          #colored --red "$0: ignoring $file" ;;
+          warn --red "$0: ignoring $file" ;;
       esac
     done
+
+    if [ -n "$DEBUG" ]; then
+      keytool -v -list -keystore "$cacerts" -storepass "${TRUSTED_PASSWORD:-changeit}";
+    fi
   fi
-  if [ -n "$DEBUG" ]; then keytool -v -list -keystore "$cacerts" -storepass "${TRUSTED_PASSWORD:-changeit}"; fi
 else
-  echo "The given trusted store -> $cacerts, cannot be found."
+  warn "The given trusted store -> $cacerts, cannot be found."
 fi
