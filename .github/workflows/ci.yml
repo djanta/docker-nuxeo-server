@@ -99,6 +99,7 @@ jobs:
                 --file $(pwd)/dockerfiles/$dist/Dockerfile . ;\
 
                 docker push djanta/nuxeo-server:"$FULL_TAG"; \
+              done; \
             done; \
           done
 
