@@ -71,7 +71,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           JDK_VARIANT: jdk
         run: |
-          LTS=(7.10 8.10 9.10 10.10)
+          LTS=(8.10 9.10 10.10)
           JDK=(8 11 13 14)
           DISTRIBUTIONS=(debian ubuntu)
           YEAR=$(date -u +'%y')
