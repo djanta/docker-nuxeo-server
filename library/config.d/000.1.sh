@@ -36,6 +36,12 @@ if [ "$NUXEO_DEV_MODE" == "false" ] || [ -z "$NUXEO_DEV_MODE" ] && [ ! -f "$NUXE
     echo "org.nuxeo.connect.server.reachable=${NUXEO_CONNECT_REACHABLE:-false}" >> "$NUXEO_CONF"
 fi
 
+    # Do not use Redis for directory cache
+    [ -n "$NUXEO_CACHE_TYPE" ] && echo "nuxeo.cache.type=$NUXEO_CACHE_TYPE" >> "$NUXEO_CONF"
+    [ -n "$NUXEO_CACHE_MAXSIZE" ] && echo "nuxeo.cache.maxsize=$NUXEO_CACHE_MAXSIZE" >> "$NUXEO_CONF"
+    [ -n "$NUXEO_CACHE_TTL" ] && echo "nuxeo.cache.ttl=$NUXEO_CACHE_TTL" >> "$NUXEO_CONF"
+    [ -n "$NUXEO_CACHE_CONCURRENT_LEVEL" ] && echo "nuxeo.cache.concurrencylevel=$NUXEO_CACHE_CONCURRENT_LEVEL" >> "$NUXEO_CONF"
+
   if [ -n "$NUXEO_AWS_S3_BUCKET" ]; then
     # Configuring S3 storage parameters
     echo "nuxeo.aws.accessKeyId=$NUXEO_AWS_S3_ACCESS_KEY" >> "$NUXEO_CONF"
