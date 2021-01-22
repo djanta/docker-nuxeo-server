@@ -30,6 +30,21 @@ if [ "$NUXEO_REDIS_ENABLED" == "true" ] && [ -n "$NUXEO_REDIS_HOST" ]; then
   echo "nuxeo.redis.maxTotal=${NUXEO_REDIS_MAX_TOTAL:-16}" >> "$NUXEO_CONF"
   echo "nuxeo.redis.timeout=${NUXEO_REDIS_TIMEOUT-2000}" >> "$NUXEO_CONF"
 
+    echo "nuxeo.redis.enabled=true" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.host=${NUXEO_REDIS_HOST}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.port=${NUXEO_REDIS_PORT:-6379}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.password=${NUXEO_REDIS_PASSWORD}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.prefix=${NUXEO_REDIS_PREFIX:-nuxeo:}" >> "$NUXEO_CONF"
+
+    ## Credit: https://jira.nuxeo.com/browse/NXP-14923
+    echo "nuxeo.redis.timeout=${NUXEO_REDIS_TIMEOUT:-4000}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.maxTotal=${NUXEO_REDIS_MAXTOTAL:-32}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.maxIdle=${NUXEO_REDIS_MAXIDLE:-16}" >> "$NUXEO_CONF"
+    echo "nuxeo.redis.queuing=${NUXEO_REDIS_QUEUING:-redis}" >> "$NUXEO_CONF"
+    echo "repository.clustering.invalidation=${NUXEO_REDIS_INVALIDATION:-pubsub}" >> "$NUXEO_CONF"
+    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,redis/g" "$NUXEO_CONF"
+
+
 #    ## Make sure we crate the target "redis" directory anyway ...
 #    mkdir -p "$NUXEO_TPL_HOME"/redis
 #
