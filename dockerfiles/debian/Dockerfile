@@ -185,7 +185,7 @@ RUN \
 RUN while read id; \
   do \
     echo "Installing package: $NUXEO_MP_BASE/$id.zip ..."; \
-    nuxeoctl mp-install $id --accept=true --relax=true; \
+    nuxeoctl mp-install $id --accept=true --relax=true  > /dev/null 2>&1; \
   done < /packages/.pre-bundle
 
 # Remove every local package once installed ...
