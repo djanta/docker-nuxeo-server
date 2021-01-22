@@ -15,13 +15,27 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
+#file="https://es.djanta.io:9200"
+#echo "${file##*://}"
+
+#ES_WITHOUT_PROTOCOL=${file##*://}
+#NUXEO_ES_PROTOCOL=${NUXEO_ES_PROTOCOL:-$(echo "${file%:*}")}
+#NUXEO_ES_PORT=${NUXEO_ES_PORT:-$(echo "${file##*:}")}
+#echo "NUXEO_ES_PROTOCOL: $NUXEO_ES_PROTOCOL"
+#echo "NUXEO_ES_PORT: $NUXEO_ES_PORT"
+#echo "ES_WITHOUT_PROTOCOL: $ES_WITHOUT_PROTOCOL"
+
 # shellcheck disable=SC1090
 # shellcheck disable=SC2129
+
 source "/library/common.sh"
 source "/library/log.sh"
 
 if [ -n "$NUXEO_ES_HOST" ] && [ -f "$NUXEO_CONF" ]; then
   info "Configuring elasticsearch ..."
+
+#  NUXEO_ES_PROTOCOL=${NUXEO_ES_PROTOCOL:-$(echo "${NUXEO_ES_HOST%:*}")}
+#  NUXEO_ES_PORT=${NUXEO_ES_PORT:-$(echo "${NUXEO_ES_HOST##*}")}
 
 #  REAL_ES_HOST="$NUXEO_ES_HOSTS"
 #  ES_URL="${NUXEO_ES_PROTOCOL:=https}:\/\/${REAL_ES_HOST}:${NUXEO_ES_PORT:-9200}"
@@ -33,7 +47,6 @@ if [ -n "$NUXEO_ES_HOST" ] && [ -f "$NUXEO_CONF" ]; then
 ## Source: $0
 ##-----------------------------------------------------------------------------
 EOF
-
   perl -p -i -e "s/^#?elasticsearch.addressList=.*$/elasticsearch.addressList=${NUXEO_ES_HOST}${NUXEO_ES_PORT:-9200}/g" "$NUXEO_CONF"
   perl -p -i -e "s/^#?elasticsearch.clusterName=.*$/elasticsearch.clusterName=${NUXEO_ES_CLUSTER_NAME:-elasticsearch}/g" "$NUXEO_CONF"
   perl -p -i -e "s/^#?elasticsearch.indexName=.*$/elasticsearch.indexName=${NUXEO_ES_INDEX_NAME:-nuxeo}/g" "$NUXEO_CONF"

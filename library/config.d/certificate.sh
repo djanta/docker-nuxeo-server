@@ -16,10 +16,12 @@
 # ---------------------------------------------------------------------------
 
 # shellcheck disable=SC1090
+# shellcheck disable=SC2116
+
 source "/library/common.sh"
 source "/library/log.sh"
 
-cacerts="${TRUSTED_STORE:-$JAVA_HOME/lib/security/cacerts}"
+cacerts=${JAVA_TRUSTED_STORE:-$(echo "$JAVA_HOME/lib/security/cacerts")}
 
 # shellcheck disable=SC2045
 if [ -f "$cacerts" ]; then
@@ -34,7 +36,7 @@ if [ -f "$cacerts" ]; then
           keytool -importcert -alias "${file%.*}" -keystore "$cacerts" -file "$file" -storepass "${TRUSTED_PASSWORD:-changeit}"
           ;;
         *)
-          warn --red "$0: ignoring $file" ;;
+          warn "$0: ignoring $file" ;;
       esac
     done
 

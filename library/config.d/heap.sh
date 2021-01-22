@@ -33,8 +33,8 @@ JVM_FILE="jvm.options"
 JAVA_MAX_MEM_RATIO=${JAVA_MAX_MEM_RATIO:-$(echo "${CONTAINER_HEAP_PERCENT:-0.5}" "100" | awk '{ printf "%d", $1 * $2 }')}
 JAVA_INITIAL_MEM_RATIO=${JAVA_INITIAL_MEM_RATIO:-${INITIAL_HEAP_PERCENT:+$(echo "${INITIAL_HEAP_PERCENT}" "100" | awk '{ printf "%d", $1 * $2 }')}}
 
-echo "JAVA_MAX_MEM_RATIO: $JAVA_MAX_MEM_RATIO"
-echo "JAVA_INITIAL_MEM_RATIO: $JAVA_INITIAL_MEM_RATIO"
+#echo "JAVA_MAX_MEM_RATIO: $JAVA_MAX_MEM_RATIO"
+#echo "JAVA_INITIAL_MEM_RATIO: $JAVA_INITIAL_MEM_RATIO"
 
 #TOTAL_MEMORY_INKB="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
 #memoryInKb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
