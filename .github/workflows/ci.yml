@@ -96,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           JDK_VARIANT: jdk
-          PLATFORM: "linux/386,linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7,linux/ppc64le,linux/s390x"
+          PLATFORM: "linux/386,linux/amd64,linux/arm64"
         run: |
           LTS=(8.10)
           JDK=(8)
