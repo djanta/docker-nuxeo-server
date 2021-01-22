@@ -52,11 +52,11 @@ function get_heap_size {
 #perl -p -i -e "s/^#?*-Xmx[0-9]\+g/-Xmx${heapSize}g/g" "$NUXEO_CONF"
 #perl -p -i -e "s/^#?*-Xms[0-9]\+g/-Xms${heapSize}g/g" "$NUXEO_CONF"
 
-echo $(sed -i -r "s/#*-Xmx[0-9]\+g/-Xmx${heapSize}g/g" "$NUXEO_CONF")
-
-echo "===> Memory heap size: $heapSize"
-
-cat "$NUXEO_CONF" | grep "JAVA_OPTS"
+#echo $(sed -i -r "s/#*-Xmx[0-9]\+g/-Xmx${heapSize}g/g" "$NUXEO_CONF")
+#
+#echo "===> Memory heap size: $heapSize"
+#
+#cat "$NUXEO_CONF" | grep "JAVA_OPTS"
 
 #debug "------------------------------------"
 #ps -ef | grep java | grep Xmx

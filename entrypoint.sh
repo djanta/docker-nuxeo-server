@@ -19,7 +19,6 @@
 # shellcheck disable=SC2034
 # shellcheck disable=SC2199
 
-
 if [[ "x $@" =~ " -d" || "x $@" =~ " --debug" || -n "$RUN_DEBUG" || -n "$LAUNCHER_DEBUG" ]]; then
   set -x
 #  set -ex
@@ -134,6 +133,10 @@ if [ "$1" = 'nuxeoctl' ]; then
       TMPD="/tmp/$(date -u +'%Y%m%d%H%M%S')"
       mkdir -pv "$TMPD"/config.d
 
+      info "Deploy env: $DEPLOY_ENV"
+
+      ls -als ${CONFIG_D}
+
       # When user define a specific environment to use
       [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && info "Using user defined deployment environment: \
         $DEPLOY_ENV" && deploy+=("$CONFIG_D/$DEPLOY_ENV") || debug "no deployment environment defined"
@@ -188,12 +191,12 @@ if [ "$1" = 'nuxeoctl' ]; then
           for package in $(ls "$dir"); do
             case $package in
               *.zip)
-                debug "Installing package: ($package), from local resource."
-                nuxeoctl mp-install --accept=true --relax=true "$package" > /dev/null 2>&1
+                debug "Installing package: ($package), from: $dir/$package"
+                nuxeoctl mp-install --accept=true --relax=true "$dir/$package" > /dev/null 2>&1
                 ;;
               *.jar)
-                debug "Copying jar file: ($package), from local resource as ."
-                cp -v "$package" "$NUXEO_HOME/nxserver/plugins/"
+                debug "Copying jar file: ("$dir/$package"), from local resource as ."
+                cp -v "$dir/$package" "$NUXEO_HOME/nxserver/plugins/"
                 ;;
               *)
                 warn "$0: ignoring $package"
@@ -202,6 +205,7 @@ if [ "$1" = 'nuxeoctl' ]; then
           done
         fi
       done
+      nuxeoctl mp-list
     else
       debug "Missing use defined shared resource volume: $CONFIG_D"
     fi

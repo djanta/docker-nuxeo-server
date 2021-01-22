@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ---------------------------------------------------------------------------
-# kafka.sh - This script will be use to provide our platform deployment architecture
+# agent.sh - This script will be use to provide our platform deployment architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,18 @@
 # more details.
 # ---------------------------------------------------------------------------
 
-if [ "$NUXEO_KAFKA_ENABLED" == "true" ] && [ -n "$NUXEO_KAFKA_HOST" ]; then
-  echo "Kafka"
+# shellcheck disable=SC1090
+# shellcheck disable=SC2129
+
+source "/library/common.sh"
+source "/library/log.sh"
+
+JVM_AGENT_JAR_PATH="$CONFIG_D/agent/${JVM_AGENT_NAME:-""}/agent.jar"
+JVM_AGENT_PROFILE_PATH="$CONFIG_D/agent/${JVM_AGENT_NAME:-""}/config/agent.profile"
+
+if [ -f "$JVM_AGENT_JAR_PATH" ]; then
+  echo "JAVA_OPTS=\$JAVA_OPTS -javaagent:$JVM_AGENT_JAR_PATH -DagentName=${HOSTNAME}" >> "$NUXEO_CONF"
+  echo "JAVA_OPTS=\$JAVA_OPTS -Dcom.sun.management.jmxremote=true -DagentProfile=${JVM_AGENT_PROFILE_PATH:-""}" >> "$NUXEO_CONF"
+else
+  warn "Missing JVM Agent $JVM_AGENT_JAR_PATH"
 fi
