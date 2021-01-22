@@ -82,6 +82,9 @@ if [ "$1" = 'nuxeoctl' ]; then
     # NUXEO INTERNAL PROPERTIES CONFIGURATION
     ######
 
+    # Update the system timezone
+    [ -n "$TIMEZONE" ] && echo "$TIMEZONE" > /etc/timezone || echo "" > /dev/null 2>&1
+
     # Override nuxeo url
     [ -n "$NUXEO_URL" ] && echo "nuxeo.url=$NUXEO_URL" >> "$NUXEO_CONF" || echo "" > /dev/null 2>&1
 

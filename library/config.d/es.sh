@@ -15,10 +15,17 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC1090
+source "/library/common.sh"
+source "/library/log.sh"
+
 #TPL_NAME="elasticsearch"
 #TPL_HOME=${NUXEO_TPL_HOME:-"./templates"}
 #
-#if [ -n "$NUXEO_ES_HOST" ] && [ -f "$NUXEO_CONF" ]; then
+if [ -n "$NUXEO_ES_HOST" ] && [ -f "$NUXEO_CONF" ]; then
+
+  info "Configuring elasticsearch ..."
+
 #  ## Make sure we crate the target "elasticsearch" directory anyway ...
 #  mkdir -p ${TPL_HOME}/${TPL_NAME}
 #
@@ -81,4 +88,4 @@
 ##    if [ "$NUXEO_ES_FORCE_REINDEX" == "true"]; then
 ##      echo ""
 ##    fi
-#fi
+fi
