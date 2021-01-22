@@ -104,7 +104,7 @@ USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Create Nuxeo user
-RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
+#RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
 
 # Add distribution
 RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
