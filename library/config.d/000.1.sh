@@ -58,3 +58,56 @@ fi
     # Temporally deactivation till ES and S3 certificate issue is solve
     perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,aws/g" "$NUXEO_CONF"
   fi
+  
+  
+  
+  
+    # Disabling Java SSL Validation
+  if [ -z "$JAVA_SSL_VALIDATION" ] || [ "$JAVA_SSL_VALIDATION" = "true" ] ; then
+    #perl -p -i -e "s/^#?(JAVA_OPTS=.*$)/\1, -Dcom.sun.net.ssl.checkRevocation=false/g" $NUXEO_CONF
+    echo "JAVA_OPTS=\$JAVA_OPTS -Dcom.sun.net.ssl.checkRevocation=false" >> "$NUXEO_CONF"
+  fi
+
+  if [ -f "$JAVA_TRUSTED_STORE" ]; then
+    echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.ssl.trustStore=$JAVA_TRUSTED_STORE -Djavax.net.ssl.trustStoreType=${JAVA_TRUSTED_TYPE:-jks} -Djavax.net.ssl.trustStorePassword=${JAVA_TRUSTED_PWD:-changeit}" >> "$NUXEO_CONF"
+    #echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.debug=ssl:record -Djavax.net.debug=ssl:handshake" >> "$NUXEO_CONF"
+  fi
+
+  # Enabling HTTPS & SSL debu omly in nuxeo dev mode ...
+  #[ "$NUXEO_DEV_MODE" == "true" ] && echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.debug=ssl:record -Djavax.net.debug=ssl:handshake" >> "$NUXEO_CONF"
+
+  # FIXME: Will be enabled when we'll move all the packages offline
+  #echo "org.nuxeo.connect.server.reachable=false" >> "$NUXEO_CONF"
+
+  if [ "$NUXEO_CLUSTERING_ENABLE" == "true" ]; then
+    # FIXME: These following two line only available from nuxeo 11.x
+    #echo "nuxeo.cluster.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
+    #echo "nuxeo.cluster.nodeid=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
+
+    # FIXME: Comment these when migrate to 11.x
+    echo "repository.clustering.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
+    echo "repository.clustering.id=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
+  fi
+
+  # Nuxeo context path setting
+  #perl -p -i -e "s/^#?org.nuxeo.ecm.contextPath=.*$/org.nuxeo.ecm.contextPath=/${NUXEO_CONTEXT_PATH:-nuxeo}/g" "$NUXEO_CONF"
+
+  # Misc Queue worker thread resizing
+  [ -n "$NUXEO_WORKER_DEFAULT_THREADS" ] && echo "nuxeo.worker.default.threads=$NUXEO_WORKER_DEFAULT_THREADS" >> "$NUXEO_CONF"
+  [ -n "$NUXEO_WORKER_PICTURE_THREADS" ] && echo "nuxeo.worker.picture.threads=$NUXEO_WORKER_PICTURE_THREADS" >> "$NUXEO_CONF"
+  [ -n "$NUXEO_WORKER_VIDEO_THREADS" ] && echo "nuxeo.worker.video.threads=$NUXEO_WORKER_VIDEO_THREADS" >> "$NUXEO_CONF"
+  [ -n "$NUXEO_WORKER_ELASTICSEARCH_THREADS" ] && echo "nuxeo.worker.elasticsearch.threads=$NUXEO_WORKER_ELASTICSEARCH_THREADS" >> "$NUXEO_CONF"
+
+  ## Tomcat configuration
+  [ -n "$NUXEO_HTTP_UPLOAD_TIMEOUT" ] && echo "nuxeo.server.http.connectionUploadTimeout=$NUXEO_HTTP_UPLOAD_TIMEOUT" >> "$NUXEO_CONF"
+  [ -n "$NUXEO_HTTP_MAX_THREAD" ] && echo "nuxeo.server.http.maxThreads=$NUXEO_HTTP_MAX_THREAD" >> "$NUXEO_CONF"
+  [ -n "$NUXEO_HTTP_ACCEPTCOUNT" ] && echo "nuxeo.server.http.acceptCount=$NUXEO_HTTP_ACCEPTCOUNT" >> "$NUXEO_CONF"
+
+  AGENT_NAME=${TARGET_ENVIRONMENT:-"dev"}
+  AGANT_PATH="/opt/app-root/contrib/agent/$AGENT_NAME/wily/Agent.jar"
+  if [ -f "$AGANT_PATH" ]; then
+    echo "JAVA_OPTS=\$JAVA_OPTS -javaagent:$AGANT_PATH -DagentName=${HOSTNAME}" >> "$NUXEO_CONF"
+    echo "JAVA_OPTS=\$JAVA_OPTS -Dcom.sun.management.jmxremote=true -DagentProfile=/opt/app-root/contrib/agent/$AGENT_NAME/wily/core/config/IntroscopeAgent.profile" >> "$NUXEO_CONF"
+  else
+    echo "No monitor available for: $AGENT_NAME"
+  fi
