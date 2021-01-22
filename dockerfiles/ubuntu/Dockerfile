@@ -150,8 +150,8 @@ RUN \
 ENV PATH $NUXEO_HOME/bin:$PATH
 
 ## # Initialize the platform marketplace configuration by default.
-RUN \
-  nuxeoctl mp-init
+#RUN \
+#  nuxeoctl mp-init
 
 # Copy the given config.d ...
 ADD library /library

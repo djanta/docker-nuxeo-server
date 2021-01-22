@@ -106,10 +106,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Create Nuxeo user
 RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
 
-RUN \
-  set -x \
-  && echo "Nuxeo Server Url: ${NUXEO_SERVER_ARCHIVE}"
-
 # Add distribution
 RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
 # && echo "$NUXEO_MD5 $ZIP_OUTPUT" | md5sum -c - \
@@ -152,8 +148,8 @@ RUN \
 ENV PATH $NUXEO_HOME/bin:$PATH
 
 ## # Initialize the platform marketplace configuration by default.
-RUN \
-  nuxeoctl mp-init
+#RUN \
+#  nuxeoctl mp-init
 
 # Copy the given config.d ...
 ADD library /library
