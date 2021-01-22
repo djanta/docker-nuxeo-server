@@ -23,5 +23,5 @@ if [ "$NUXEO_DEV_MODE" == "true" ] && [ "$DEBUG" == "true" ]; then
       "server=${DEBUG_SERVER_SIDE:-y},suspend=${DEBUG_SUSPEND:-n}" >> "$NUXEO_CONF"
 fi
 
-      #elasticsearch.override.pageproviders
-      NUXEO_ES_PAGEPROVIDERS: 'default_search,default_document_suggestion,DEFAULT_DOCUMENT_SUGGESTION,advanced_document_content,domain_documents,expired_search,default_trash_search,REST_API_SEARCH_ADAPTER,all_collections'
+#elasticsearch.override.pageproviders
+#NUXEO_ES_PAGEPROVIDERS="default_search,default_document_suggestion,DEFAULT_DOCUMENT_SUGGESTION,advanced_document_content,domain_documents,expired_search,default_trash_search,REST_API_SEARCH_ADAPTER,all_collections"
