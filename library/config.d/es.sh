@@ -26,6 +26,41 @@ if [ -n "$NUXEO_ES_HOST" ] && [ -f "$NUXEO_CONF" ]; then
 
   info "Configuring elasticsearch ..."
 
+    REAL_ES_HOST="$NUXEO_ES_HOSTS"
+    ES_URL="${NUXEO_ES_PROTOCOL:=https}:\/\/${REAL_ES_HOST}:${NUXEO_ES_PORT:-9200}"
+
+    echo "Recomposed ES endpoint: ${ES_URL}"
+
+    perl -p -i -e "s/^#?elasticsearch.addressList=.*$/elasticsearch.addressList=${ES_URL}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.clusterName=.*$/elasticsearch.clusterName=${NUXEO_ES_CLUSTER_NAME:-elasticsearch}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.indexName=.*$/elasticsearch.indexName=${NUXEO_ES_INDEX_NAME:-nuxeo}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.indexNumberOfReplicas=.*$/elasticsearch.indexNumberOfReplicas=${NUXEO_ES_REPLICAS:-1}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.indexNumberOfShards=.*$/elasticsearch.indexNumberOfShards=${NUXEO_ES_SHARDS:-5}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.enabled=.*$/elasticsearch.enabled=${NUXEO_ES_ENABLED:-true}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?elasticsearch.client=.*$/elasticsearch.client=${NUXEO_ES_CLIENT:-RestClient}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?audit.elasticsearch.enabled=.*$/audit.elasticsearch.enabled=${NUXEO_ES_AUDIT_ENABLED:-false}/g" "$NUXEO_CONF"
+
+    perl -p -i -e "s/^#?elasticsearch.adminCenter.displayClusterInfo=.*$/elasticsearch.adminCenter.displayClusterInfo=${NUXEO_ES_ADMIN_INFO:-true}/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?audit.elasticsearch.indexName=.*$/audit.elasticsearch.indexName=${NUXEO_ES_INDEX_NAME:-nuxeo}-audit/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?seqgen.elasticsearch.indexName=.*$/seqgen.elasticsearch.indexName=${NUXEO_ES_INDEX_NAME:-nuxeo}-uidgen/g" "$NUXEO_CONF"
+
+    echo "elasticsearch.restClient.username=$NUXEO_ES_USERNAME" >> "$NUXEO_CONF"
+    echo "elasticsearch.restClient.password=$NUXEO_ES_PASSWORD" >> "$NUXEO_CONF"
+
+    echo "elasticsearch.index.translog.durability=${NUXEO_ES_LOG_DURABILITY:-async}" >> "$NUXEO_CONF"
+    echo "elasticsearch.indexing.maxThreads=${NUXEO_ES_INDEXING_THREADS:-6}" >> "$NUXEO_CONF"
+    echo "elasticsearch.reindex.bucketReadSize=${NUXEO_ES_REINDEX_BKRSIZE:-1000}" >> "$NUXEO_CONF"
+    echo "elasticsearch.reindex.bucketWriteSize=${NUXEO_ES_REINDEX_BKRWSIZE:-200}" >> "$NUXEO_CONF"
+
+    # Force the default page providers to use Elasticsearch
+    [ -n "$NUXEO_ES_PAGEPROVIDERS" ] && perl -p -i -e "s/^#?elasticsearch.override.pageproviders=.*$/elasticsearch.override.pageproviders=${NUXEO_ES_PAGEPROVIDERS}/g" "$NUXEO_CONF"
+
+    if [ "$NUXEO_ES_PROTOCOL" == "https" ] && [ -f "$JAVA_TRUSTED_STORE" ]; then
+      echo "elasticsearch.restClient.truststore.path=$JAVA_TRUSTED_STORE" >> "$NUXEO_CONF"
+      echo "elasticsearch.restClient.truststore.password=${JAVA_TRUSTED_PWD:-changeit}" >> "$NUXEO_CONF"
+      echo "elasticsearch.restClient.truststore.type=${JAVA_TRUSTED_TYPE:-jks}" >> "$NUXEO_CONF"
+    fi
+
 #  ## Make sure we crate the target "elasticsearch" directory anyway ...
 #  mkdir -p ${TPL_HOME}/${TPL_NAME}
 #
