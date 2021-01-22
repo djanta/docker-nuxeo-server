@@ -35,3 +35,20 @@ if [ "$NUXEO_DEV_MODE" == "false" ] || [ -z "$NUXEO_DEV_MODE" ] && [ ! -f "$NUXE
   [ -z "$(cat $"NUXEO_DATA"/instance.clid)" ]; then
     echo "org.nuxeo.connect.server.reachable=${NUXEO_CONNECT_REACHABLE:-false}" >> "$NUXEO_CONF"
 fi
+
+  if [ -n "$NUXEO_AWS_S3_BUCKET" ]; then
+    # Configuring S3 storage parameters
+    echo "nuxeo.aws.accessKeyId=$NUXEO_AWS_S3_ACCESS_KEY" >> "$NUXEO_CONF"
+    echo "nuxeo.aws.secretKey=$NUXEO_AWS_S3_SECRET_KEY" >> "$NUXEO_CONF"
+    echo "nuxeo.aws.region=$NUXEO_AWS_S3_REGION" >> "$NUXEO_CONF"
+    echo "nuxeo.s3storage.endpoint=${NUXEO_AWS_S3_ENDPOINT_PROTOCOL:-https}:\/\/${NUXEO_AWS_S3_ENDPOINT}" >> "$NUXEO_CONF"
+    echo "nuxeo.s3storage.pathstyleaccess=$NUXEO_AWS_PATHSTYLE_ACCESS" >> "$NUXEO_CONF"
+    echo "nuxeo.core.binarymanager=org.nuxeo.ecm.core.storage.sql.S3BinaryManager" >> "$NUXEO_CONF"
+    echo "nuxeo.s3storage.bucket=$NUXEO_AWS_S3_BUCKET" >> "$NUXEO_CONF"
+    echo "nuxeo.s3storage.digest=$NUXEO_AWS_S3_DIGEST" >> "$NUXEO_CONF"
+
+    [[ -n "$NUXEO_AWS_S3_FOLDER" ]] && echo "nuxeo.s3storage.bucket_prefix=$NUXEO_AWS_S3_FOLDER" >> "$NUXEO_CONF"
+
+    # Temporally deactivation till ES and S3 certificate issue is solve
+    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,aws/g" "$NUXEO_CONF"
+  fi
