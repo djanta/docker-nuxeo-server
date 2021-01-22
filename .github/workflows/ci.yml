@@ -126,10 +126,9 @@ jobs:
                   --build-arg BUILD_SDK_VERSION="$SDK_VERSION" \
                   --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
                   --build-arg BUILD_DISTRIB="$dist" \
-                  --output "type=image,push=false" \
+                  --output "type=image,push=true" \
                   --tag djanta/nuxeo-server:"$FULL_TAG" \
                   --file $(pwd)/dockerfiles/$dist/Dockerfile .
-
               done; \
             done; \
           done
