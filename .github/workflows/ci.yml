@@ -90,6 +90,7 @@ jobs:
             ${{ runner.os }}-buildx-
 
       - name: Build Image & Deploy
+        id: image
         env:
           GITHUB_USERNAME: ${{ secrets.GH_USER }}
           GH_USER: ${{ secrets.GH_USER }}
@@ -98,11 +99,13 @@ jobs:
           JDK_VARIANT: jdk
           PLATFORM: "linux/386,linux/amd64,linux/arm64"
         run: |
-          LTS=(8.10)
+          LTS=(8.10 9.10 10.10)
           JDK=(8)
           DISTRIBUTIONS=(debian ubuntu)
           YEAR=$(date -u +'%y')
           MONTH=$(date -u +'%m')
+
+          IMAGE_ID_CACHE=()
 
           for jdkver in "${JDK[@]}"; do \
             JDK_VERSION="$jdkver"; \
@@ -115,6 +118,8 @@ jobs:
               VERSION_TAG="$NUXEO_SHORT_LTS.$JDK_VERSION.$VERSION_SURFIX"; \
               for dist in "${DISTRIBUTIONS[@]}"; do \
                 FULL_TAG="$VERSION_TAG-$dist"; \
+                IMAGE_TAG=djanta/nuxeo-server:"$FULL_TAG"; \
+                IMAGE_ID_CACHE+=("$IMAGE_TAG"); \
                 docker buildx build \
                   --cache-from "type=local,src=/tmp/.buildx-cache" \
                   --cache-to "type=local,dest=/tmp/.buildx-cache" \
@@ -132,18 +137,18 @@ jobs:
               done; \
             done; \
           done
-#
-#                docker --debug build -t djanta/nuxeo-server:"$FULL_TAG" \
-#                --build-arg BUILD_VERSION="$VERSION_TAG" \
-#                --build-arg BUILD_HASH=$(git rev-parse HEAD) \
-#                --build-arg RELEASE_VERSION="$VERSION_TAG" \
-#                --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-#                --build-arg BUILD_SDK_VERSION="$SDK_VERSION" \
-#                --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
-#                --build-arg BUILD_DISTRIB="$dist" \
-#                --file $(pwd)/dockerfiles/$dist/Dockerfile . ;\
-#
-#               docker push djanta/nuxeo-server:"$FULL_TAG"; \
+
+          echo ::set-output name=image_id_cache::${IMAGE_ID_CACHE}
+
+      - name: Inspect image
+#        if: always() && github.event_name != 'pull_request'
+        if: always()
+        run: |
+          if [ -n ${{ steps.image.outputs.image_id_cache }} ]; then \
+            for image in ${{ steps.image.outputs.image_id_cache }}[@]; do \
+              docker buildx imagetools inspect "$image" \
+            done; \
+          fi
 
 #      - name: 'Run Docker test'
 #        shell: bash
