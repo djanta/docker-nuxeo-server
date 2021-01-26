@@ -65,7 +65,7 @@ LABEL org.label-schema.description="DJANTA.IO Nuxeo customized server"
 LABEL org.label-schema.vcs-url="https://github.com/djanta/docker-nuxeo-server"
 LABEL org.label-schema.vcs-ref=$BUILD_HASH
 
-LABEL org.label-schema.docker.cmd.devel="docker run -it --name nuxeo-server-${NUXEO_VERSION}-${BUILD_DISTRIB} \
+LABEL org.label-schema.docker.cmd.devel="docker run -it --rm --name nuxeo-server-${NUXEO_VERSION}-${BUILD_DISTRIB} \
   -p 8080:8080 \
   -p 8787:8787 \
   -p 9443:9443 \
@@ -103,11 +103,14 @@ USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Create Nuxeo user
-#RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
+RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
+
+# Rgistering nuxeo distribtion checksum source
+ADD checksum /checksum
 
 # Add distribution
 RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
-# && echo "$NUXEO_MD5 $ZIP_OUTPUT" | md5sum -c - \
+  && echo "$(cat /checksum/${NUXEO_VERSION}) $ZIP_OUTPUT" | md5sum -c - \
   && mkdir -p /tmp/nuxeo-distribution $(dirname $NUXEO_HOME) \
   && unzip -q -d /tmp/nuxeo-distribution $ZIP_OUTPUT \
   && DISTDIR=$(/bin/ls /tmp/nuxeo-distribution | head -n 1) \
@@ -126,19 +129,14 @@ RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
 RUN \
   mkdir -p $NUXEO_DATA \
   && chmod -Rv g+rw $NUXEO_DATA \
-
   && mkdir -pv $NUXEO_LOG \
   && chmod -Rv g+rw $NUXEO_LOG \
-
   && mkdir -pv $NUXEO_RUN \
   && chmod -Rv g+rw $NUXEO_RUN \
-
   && mkdir -pv $NUXEO_TMP \
   && chmod -Rv g+rwx $NUXEO_TMP \
-
   && mkdir -pv $CONFIG_D \
   && chmod -Rv g+rx $CONFIG_D \
-
   && mkdir -pv /packages.d \
   && chmod -R g+rx /packages.d \
 
@@ -184,15 +182,15 @@ RUN \
   done
 
 # Download all provided preset marketplace distribution
-RUN while read id; \
+RUN while read package; \
   do \
-    echo "Installing package: $NUXEO_MP_BASE/$id.zip ..."; \
-    nuxeoctl mp-install $id --accept=true --relax=true; \
+    echo "Installing marketplace bundle: $package ..."; \
+    nuxeoctl mp-install $package --accept=true --relax=true  > /dev/null 2>&1; \
   done < /packages/.pre-bundle
 
 # Remove every local package once installed ...
 RUN \
-  rm -rfv /packages
+  rm -rfv /packages /checksum
 
 # Switch back to nuxeo default user ID
 #USER 1001
@@ -205,7 +203,6 @@ COPY entrypoint.sh /
 EXPOSE 8080
 EXPOSE 8787
 EXPOSE 9443
-EXPOSE 5432
 
 ENTRYPOINT ["/entrypoint.sh"]
 

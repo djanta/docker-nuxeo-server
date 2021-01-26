@@ -104,11 +104,14 @@ USER root
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Create Nuxeo user
-#RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
+RUN useradd -m -d /home/$NUXEO_USER -g root -G sudo -u 1001 -s /bin/bash $NUXEO_USER
+
+# Rgistering nuxeo distribtion checksum source
+ADD checksum /checksum
 
 # Add distribution
 RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
-# && echo "$NUXEO_MD5 $ZIP_OUTPUT" | md5sum -c - \
+  && echo "$(cat /checksum/${NUXEO_VERSION}) $ZIP_OUTPUT" | md5sum -c - \
   && mkdir -p /tmp/nuxeo-distribution $(dirname $NUXEO_HOME) \
   && unzip -q -d /tmp/nuxeo-distribution $ZIP_OUTPUT \
   && DISTDIR=$(/bin/ls /tmp/nuxeo-distribution | head -n 1) \
@@ -116,8 +119,6 @@ RUN curl -fsSL "${NUXEO_SERVER_ARCHIVE}" -o $ZIP_OUTPUT \
   && sed -i -e "s/^org.nuxeo.distribution.package.*/org.nuxeo.distribution.package=docker/" \
   $NUXEO_HOME/templates/common/config/distribution.properties \
   && rm -rfv /tmp/nuxeo-distribution* \
-# # For arbitrary user in the admin group
-#  && chown -Rv 1001:0 $NUXEO_HOME \
   && chmod g+rwx $NUXEO_HOME \
   && chmod -Rv g+rwx $NUXEO_HOME/* \
   && chmod g+wx $NUXEO_HOME/bin/*ctl $NUXEO_HOME/bin/*.sh
@@ -182,15 +183,15 @@ RUN \
   done
 
 # Download all provided preset marketplace distribution
-RUN while read id; \
+RUN while read package; \
   do \
-    echo "Installing package: $NUXEO_MP_BASE/$id.zip ..."; \
-    nuxeoctl mp-install $id --accept=true --relax=true  > /dev/null 2>&1; \
+    echo "Installing marketplace bundle: $package ..."; \
+    nuxeoctl mp-install $package --accept=true --relax=true  > /dev/null 2>&1; \
   done < /packages/.pre-bundle
 
 # Remove every local package once installed ...
 RUN \
-  rm -rfv /packages
+  rm -rfv /packages /checksum
 
 # Switch back to nuxeo default user ID
 #USER 1001
@@ -198,12 +199,12 @@ RUN \
 # Using NUXEO HOME as default user home
 WORKDIR $NUXEO_HOME
 
+# Main Entry point
 COPY entrypoint.sh /
 
 EXPOSE 8080
 EXPOSE 8787
 EXPOSE 9443
-EXPOSE 5432
 
 ENTRYPOINT ["/entrypoint.sh"]
 

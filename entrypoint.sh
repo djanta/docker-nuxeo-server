@@ -133,10 +133,6 @@ if [ "$1" = 'nuxeoctl' ]; then
       TMPD="/tmp/$(date -u +'%Y%m%d%H%M%S')"
       mkdir -pv "$TMPD"/config.d
 
-      info "Deploy env: $DEPLOY_ENV"
-
-      ls -als ${CONFIG_D}
-
       # When user define a specific environment to use
       [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && info "Using user defined deployment environment: \
         $DEPLOY_ENV" && deploy+=("$CONFIG_D/$DEPLOY_ENV") || debug "no deployment environment defined"
@@ -145,12 +141,12 @@ if [ "$1" = 'nuxeoctl' ]; then
         warn "Scanning ($dir) directory for deployment ..."
         [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
         [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
-        [ -d "$dir/log" ] && mv -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
-        [ -d "$dir/config" ] && mv -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
-        [ -d "$dir/templates" ] && mv -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
+        [ -d "$dir/log" ] && cp -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
+        [ -d "$dir/config" ] && cp -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
+        [ -d "$dir/templates" ] && cp -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
 
         # Copy all user defined config.d
-        [ -d "$dir/config.d" ] && mv -Rv "$dir/config.d/*" "$TMPD/config.d" || echo "" > /dev/null 2>&1
+        [ -d "$dir/config.d" ] && cp -Rv "$dir/config.d/*" "$TMPD/config.d/" || echo "" > /dev/null 2>&1
       done
 
   #    # Copy user shared configuration ...
@@ -189,6 +185,7 @@ if [ "$1" = 'nuxeoctl' ]; then
           info "Scanning folder: $dir"
           # shellcheck disable=SC2045
           for package in $(ls "$dir"); do
+            info "Processing package: $dir/$package"
             case $package in
               *.zip)
                 debug "Installing package: ($package), from: $dir/$package"
@@ -243,6 +240,27 @@ EOF
     # Soure to export all preview variables ...
     source "$NUXEO_HOME"/configured
   fi
+fi
+
+# Always try to uninstall the given marketplace package.
+if [ -n "$NUXEO_PACKAGE_UNINSTALL" ]; then
+  for package in $(echo "$NUXEO_PACKAGE_UNINSTALL" | tr "," "\n"); do
+    nuxeoctl mp-uninstall --accept=true --relax=true "$package" > /dev/null 2>&1
+  done
+fi
+
+# Always try to install the given marketplace package.
+if [ -n "$NUXEO_PACKAGE_INSTALL" ]; then
+  for package in $(echo "$NUXEO_PACKAGE_INSTALL" | tr "," "\n"); do
+    nuxeoctl mp-install --accept=true --relax=true "$package" > /dev/null 2>&1
+  done
+fi
+
+# Always try to install the given marketplace template.
+if [ -n "$NUXEO_TEMPLATE_INSTALL" ]; then
+  for template in $(echo "$NUXEO_TEMPLATE_UNINSTALL" | tr "," "\n"); do
+    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${template}/g" "$NUXEO_CONF"
+  done
 fi
 
 ## From here we can re-run the background scripts ...

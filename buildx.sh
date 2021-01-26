@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------------------------------------------------------------------------
-# build.sh - This script will be use to provide our platform deployment build.sh architecture
+# buildx.sh - This script will be use to provide our platform deployment build.sh architecture
 #
 # Copyright 2015, Stanislas Koffi ASSOUTOVI <team.docker@djanta.io>
 # This program is free software: you can redistribute it and/or modify
@@ -34,6 +34,9 @@ DISTRIBUTIONS=(${1:-debian ubuntu})
 YEAR=$(date -u +'%y')
 MONTH=$(date -u +'%m')
 
+#PLATFORM="linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x"
+PLATFORM="linux/386,linux/amd64,linux/arm64"
+
 for jdkver in "${JDK[@]}"; do
   JDK_VERSION="$jdkver"
   for lts in "${LTS[@]}"; do
@@ -47,7 +50,9 @@ for jdkver in "${JDK[@]}"; do
     VERSION_TAG="$NUXEO_SHORT_LTS.$JDK_VERSION.$VERSION_SURFIX"
     for dist in "${DISTRIBUTIONS[@]}"; do
       FULL_TAG="$VERSION_TAG-$dist"
-      docker --debug build -t djanta/nuxeo-server:"$FULL_TAG" \
+      docker buildx build \
+        --no-cache \
+        --platform "$PLATFORM" \
         --build-arg BUILD_VERSION="$VERSION_TAG" \
         --build-arg BUILD_HASH=$(git rev-parse HEAD) \
         --build-arg RELEASE_VERSION="$VERSION_TAG" \
@@ -55,7 +60,9 @@ for jdkver in "${JDK[@]}"; do
         --build-arg BUILD_SDK_VERSION="$SDK_VERSION" \
         --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
         --build-arg BUILD_DISTRIB="$dist" \
-        --file $(pwd)/dockerfiles/$dist/Dockerfile .
+        --output "type=image,push=false" \
+        --tag "$FULL_TAG" \
+        --file $(pwd)/dockerfiles/$dist/Dockerfile ./
     done
   done
 done
