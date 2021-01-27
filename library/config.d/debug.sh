@@ -15,13 +15,30 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
+# shellcheck disable=SC1090
+# shellcheck disable=SC2129
+source "/library/common.sh"
+source "/library/log.sh"
+
+# shellcheck disable=SC2116
+DEBUG=${DEBUG:-$(echo "${NUXEO_DEV_MODE:-false}")}
+
 ##
 # Enable java debug option by default only of NUXEO_DEV_MODE is activated
 ##
-if [ "$NUXEO_DEV_MODE" == "true" ] && [ "$DEBUG" == "true" ]; then
+if [ "$DEBUG" == "true" ]; then
+
   echo "JAVA_OPTS=\$JAVA_OPTS -Xdebug -Xrunjdwp:transport=dt_socket,address=${DEBUG_PORT:-8787}," \
       "server=${DEBUG_SERVER_SIDE:-y},suspend=${DEBUG_SUSPEND:-n}" >> "$NUXEO_CONF"
-fi
 
-#elasticsearch.override.pageproviders
-#NUXEO_ES_PAGEPROVIDERS="default_search,default_document_suggestion,DEFAULT_DOCUMENT_SUGGESTION,advanced_document_content,domain_documents,expired_search,default_trash_search,REST_API_SEARCH_ADAPTER,all_collections"
+  DEBUG_SSL=${DEBUG_SSL:-true}
+  if [ "$DEBUG_SSL" == "true" ]; then
+    echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.debug=ssl:record -Djavax.net.debug=ssl:handshake" >> "$NUXEO_CONF"
+  fi
+
+  ## Log and stack tracing
+  echo "org.nuxeo.rest.stack.enable=${DEBUG:-false}" >> "$NUXEO_CONF"
+  echo "org.nuxeo.automation.trace=${DEBUG:-false}" >> "$NUXEO_CONF"
+  echo "org.nuxeo.automation.trace.printable=${DEBUG:-false}" >> "$NUXEO_CONF"
+
+fi

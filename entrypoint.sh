@@ -88,8 +88,9 @@ if [ "$1" = 'nuxeoctl' ]; then
     [ -n "$NUXEO_URL" ] && echo "nuxeo.url=$NUXEO_URL" >> "$NUXEO_CONF" || echo "" > /dev/null 2>&1
 
     # Skip Nuxeo Install & Configuration the first time
-    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF" \
-      || perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=true/g" "$NUXEO_CONF"
+    perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=${SKIP_WIZARD:-true}/g" "$NUXEO_CONF"
+#    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF" \
+#      || perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=true/g" "$NUXEO_CONF"
 
 #    [ -d "$NUXEO_LOG" ] && perl -p -i -e "s/^#?nuxeo.log.dir=.*$/nuxeo.log.dir=\/${NUXEO_LOG#?}/g" "$NUXEO_CONF"
 #    [ -d "$NUXEO_RUN" ] && perl -p -i -e "s/^#?nuxeo.pid.dir=.*$/nuxeo.pid.dir=\/${NUXEO_RUN#?}/g" "$NUXEO_CONF"

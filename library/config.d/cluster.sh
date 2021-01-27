@@ -21,3 +21,12 @@
 source "/library/common.sh"
 source "/library/log.sh"
 
+if [ "$NUXEO_CLUSTERING_ENABLE" == "true" ]; then
+  # FIXME: These following two line only available from nuxeo 11.x
+  #echo "nuxeo.cluster.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
+  #echo "nuxeo.cluster.nodeid=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
+
+  # FIXME: Comment these when migrate to 11.x
+  echo "repository.clustering.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
+  echo "repository.clustering.id=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
+fi

@@ -25,7 +25,19 @@ source "/library/log.sh"
 # Credit: https://doc.nuxeo.com/nxdoc/configuration-parameters-index-nuxeoconf/
 #########
 
-if [ "$NUXEO_DEV_MODE" == "true" ]; then perl -p -i -e "s/^#?org.nuxeo.dev=.*$/org.nuxeo.dev=${NUXEO_DEV_MODE}/g" "$NUXEO_CONF"; fi
+NUXEO_PRODUCT_VERSION=${NUXEO_PRODUCT_VERSION:-$(echo ${NUXEO_VERSION:-""})}
+if [ "$NUXEO_DEV_MODE" == "true" ]; then NUXEO_PROD_MODE=false; fi
+
+perl -p -i -e "s/^#?org.nuxeo.dev=.*$/org.nuxeo.dev=${NUXEO_DEV_MODE:-true}/g" "$NUXEO_CONF"
+echo "org.nuxeo.prod=${NUXEO_PROD_MODE:-false}" >> "$NUXEO_CONF"
+
+echo "org.nuxeo.connect.server.reachable=${NUXEO_CONNECT_OFFILINE:-false}" >> "$NUXEO_CONF"
+echo "org.nuxeo.ecm.product.name=${NUXEO_PRODUCT_NAME:-"DJANTA.IO Customized Nuxeo Server"}" >> "$NUXEO_CONF"
+echo "org.nuxeo.ecm.instance.description=${NUXEO_SERVER_DESC:-"DJANTA.IO Customized Nuxeo Server"}" >> "$NUXEO_CONF"
+echo "org.nuxeo.ecm.instance.name=${NUXEO_SERVER_NAME:-"DJANTA.IO Nuxeo Server"}" >> "$NUXEO_CONF"
+echo "org.nuxeo.ecm.product.version=${NUXEO_PRODUCT_VERSION:-$(echo ${NUXEO_VERSION:-""})}" >> "$NUXEO_CONF"
+
+#if [ "$NUXEO_DEV_MODE" == "true" ]; then perl -p -i -e "s/^#?org.nuxeo.dev=.*$/org.nuxeo.dev=${NUXEO_DEV_MODE}/g" "$NUXEO_CONF"; fi
 if [ -n "$VIRTUAL_HOST" ]; then perl -p -i -e "s/^#?nuxeo.virtual.host=.*$/nuxeo.virtual.host=${VIRTUAL_HOST}/g" "$NUXEO_CONF"; fi
 if [ -n "$LOOPBACK_URL" ]; then perl -p -i -e "s/^#?nuxeo.loopback.url=.*$/nuxeo.loopback.url=${LOOPBACK_URL}/g" "$NUXEO_CONF"; fi
 if [ -n "$NUXEO_AUTOMATION_TRACE" ]; then perl -p -i -e "s/^#?org.nuxeo.automation.trace=.*$/org.nuxeo.automation.trace=$NUXEO_AUTOMATION_TRACE/g" "$NUXEO_CONF"; fi
@@ -33,15 +45,8 @@ if [ -n "$NUXEO_DDL_MODE" ]; then perl -p -i -e "s/^#?nuxeo.vcs.ddlmode=.*$/nuxe
 if [ -n "$NUXEO_BINARY_STORE" ]; then perl -p -i -e "s/^#?repository.binary.store=.*$/repository.binary.store=${NUXEO_BINARY_STORE}/g" "$NUXEO_CONF"; fi
 if [ -n "$NUXEO_TEMPLATES" ]; then perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${NUXEO_TEMPLATES}/g" "$NUXEO_CONF"; fi
 
-##
-# Desable contacting nuxeo connect server
-##
-#if [ "$NUXEO_DEV_MODE" == "false" ] || [ -z "$NUXEO_DEV_MODE" ] && [ ! -f "$NUXEO_DATA/instance.clid" ] || \
-#  [ -z "$(cat $"NUXEO_DATA"/instance.clid)" ]; then
-#    echo "org.nuxeo.connect.server.reachable=${NUXEO_CONNECT_OFFILINE:-false}" >> "$NUXEO_CONF"
-#fi
-
-if [ -n "$NUXEO_CONNECT_OFFILINE" ]; then echo "org.nuxeo.connect.server.reachable=false" >> "$NUXEO_CONF"; fi
+# Nuxeo context path setting
+perl -p -i -e "s/^#?org.nuxeo.ecm.contextPath=.*$/org.nuxeo.ecm.contextPath=/${NUXEO_CONTEXT_PATH:-nuxeo}/g" "$NUXEO_CONF"
 
 ## Do not use Redis for directory cache
 #[ -n "$NUXEO_CACHE_TYPE" ] && echo "nuxeo.cache.type=$NUXEO_CACHE_TYPE" >> "$NUXEO_CONF"
@@ -57,27 +62,8 @@ fi
 
 if [ -f "$JAVA_TRUSTED_STORE" ]; then
   echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.ssl.trustStore=$JAVA_TRUSTED_STORE -Djavax.net.ssl.trustStoreType=${JAVA_TRUSTED_TYPE:-jks} -Djavax.net.ssl.trustStorePassword=${JAVA_TRUSTED_PWD:-changeit}" >> "$NUXEO_CONF"
-  #echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.debug=ssl:record -Djavax.net.debug=ssl:handshake" >> "$NUXEO_CONF"
 fi
 
-# Enabling HTTPS & SSL debu omly in nuxeo dev mode ...
-#[ "$NUXEO_DEV_MODE" == "true" ] && echo "JAVA_OPTS=\$JAVA_OPTS -Djavax.net.debug=ssl:record -Djavax.net.debug=ssl:handshake" >> "$NUXEO_CONF"
-
-# FIXME: Will be enabled when we'll move all the packages offline
-#echo "org.nuxeo.connect.server.reachable=false" >> "$NUXEO_CONF"
-
-if [ "$NUXEO_CLUSTERING_ENABLE" == "true" ]; then
-  # FIXME: These following two line only available from nuxeo 11.x
-  #echo "nuxeo.cluster.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
-  #echo "nuxeo.cluster.nodeid=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
-
-  # FIXME: Comment these when migrate to 11.x
-  echo "repository.clustering.enabled=${NUXEO_CLUSTERING_ENABLE}" >> "$NUXEO_CONF"
-  echo "repository.clustering.id=${NUXEO_CLUSTERING_PREFIX:-""}${HOSTNAME}" >> "$NUXEO_CONF"
-fi
-#
-#  # Nuxeo context path setting
-#  #perl -p -i -e "s/^#?org.nuxeo.ecm.contextPath=.*$/org.nuxeo.ecm.contextPath=/${NUXEO_CONTEXT_PATH:-nuxeo}/g" "$NUXEO_CONF"
 #
 #  # Misc Queue worker thread resizing
 #  [ -n "$NUXEO_WORKER_DEFAULT_THREADS" ] && echo "nuxeo.worker.default.threads=$NUXEO_WORKER_DEFAULT_THREADS" >> "$NUXEO_CONF"

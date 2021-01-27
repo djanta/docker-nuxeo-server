@@ -140,15 +140,15 @@ jobs:
 
           echo ::set-output name=image_id_cache::${IMAGE_ID_CACHE}
 
-      - name: Inspect image
-#        if: always() && github.event_name != 'pull_request'
-        if: always()
-        run: |
-          if [ -n ${{ steps.image.outputs.image_id_cache }} ]; then \
-            for image in ${{ steps.image.outputs.image_id_cache }}[@]; do \
-              docker buildx imagetools inspect "$image" \
-            done; \
-          fi
+#      - name: Inspect image
+##        if: always() && github.event_name != 'pull_request'
+#        if: always()
+#        run: |
+#          if [ -n ${{ steps.image.outputs.image_id_cache }} ]; then \
+#            for image in ${{ steps.image.outputs.image_id_cache }}[@]; do \
+#              docker buildx imagetools inspect "$image" \
+#            done; \
+#          fi
 
 #      - name: 'Run Docker test'
 #        shell: bash
