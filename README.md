@@ -3,9 +3,9 @@
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/djanta/docker-nuxeo-server)](https://github.com/djanta/docker-nuxeo-server)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/djanta/docker-nuxeo-server?color=brightgreen&include_prereleases)](https://github.com/djanta/docker-nuxeo-server)
 [![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/djanta/docker-server)](https://github.com/djanta/docker-nuxeo-server)
-[![stars badge](https://img.shields.io/docker/stars/djanta/docker-server.svg)](https://github.com/djanta/docker-nuxeo-server)
-[![pull badge](https://img.shields.io/docker/pulls/djanta/docker-server.svg)](https://github.com/djanta/docker-nuxeo-server)
-[![Docker image](https://images.microbadger.com/badges/image/djanta/docker-server.svg)](https://microbadger.com/images/djanta/docker-nuxeo-server)
+[![stars badge](https://img.shields.io/docker/stars/djanta/nuxeo-server.svg)](https://github.com/djanta/docker-nuxeo-server)
+[![pull badge](https://img.shields.io/docker/pulls/djanta/nuxeo-server.svg)](https://github.com/djanta/docker-nuxeo-server)
+[![Docker image](https://images.microbadger.com/badges/image/djanta/nuxeo-server.svg)](https://microbadger.com/images/djanta/nuxeo-server)
 
 > 1.0.0
 
