@@ -91,7 +91,7 @@ As we're making all our containers to be largely available and easier to use, we
 ### Quick Start (for localhost development) on the fly
 
 ```shell
-docker run it --rm --name nuxeo-server{{version}} -p 8080:8080 -d djanta/nuxeo-server:{{version}}
+docker run it --rm --name nuxeo-server{{version}} -p 8080:8080 djanta/nuxeo-server:{{version}}
 ```
 
 When you create and start a new container `djanta/nuxeo-server:{{version}}`, on the fly, Keep in mind that, the default configuration is bare-bones and has no content.
@@ -109,9 +109,50 @@ Considere also set the environment `SKIP_WIZARD` to `true` or `false` whether yo
 
 For the purpose of this documentation, we'll be using the server `djanta/nuxeo-server:10.8.211-debian`
 
-> Note: As for now, this image is available for `Nuxeo` LST (2019, 2017, 2015).
+> Note: As for now, this image is available for `Nuxeo` LTS (2019, 2017, 2015).
 
-#### Conf
+```shell
+docker run --rm -ti --name nuxeo-server-10 -p 8080:8080 djanta/nuxeo-server:10.8.211-debian
+```
+
+#### Start a nuxeo with additional packages
+
+This image has been built with the ability to start a new container with your own external packages. To do so, just pass the list of those through the environment varialbe: `NUXEO_PACKAGES`
+
+```shell
+docker run --rm -it --name nuxeo-server-10 -p 8080:8080 -e NUXEO_PACKAGES="nuxeo-template-rendering-samples ..." djanta/nuxeo-server:10.8.211-debian
+```
+> Note: Eache image has been built with the following embedded packages: `nuxeo-web-ui, nuxeo-jsf-ui, nuxeo-dam, nuxeo-template-rendering, nuxeo-liveconnect`
+
+To facilitated the usage and the configuration of this custom `Nuxeo` container, you can also have a look at out preset `docker compose` and `k8s` configuration [at](https://github.com/djanta/docker-nuxeo-bundle) or use it as follow:
+
+```
+  # Check out the entire project to get default configuration files
+  git clone https://github.com/djanta/docker-nuxeo-bundle.git
+  cd docker-nuxeo-bundle
+```
+
+The default configuration is bare-bones and has no content.
+```
+  # To start nuxeo with external container for postgres, elasticsearch
+  ./run --profile=nuxeo --bundle="postgres,elasticsearch" --shortcut="nuxeo.local"
+```
+
+## Custom Configuration
+
+This image provide an entry with the ability to let you extend or customized the default `Nuxeo` config file. This customization can be done whether through:
+
+### Custom configuration template (nuxeo.conf)
+
+Your own defaut `nuxeo.conf` template can be contributed through a mount volume to `/var/lib/nuxeo/nuxeo.conf`
+
+#### Usage 
+
+```shell
+docker run --rm -ti --name nuxeo-server-10 -p 8080:8080 -v $PWD/nuxeo.conf:/var/lib/nuxeo/nuxeo.conf:ro djanta/nuxeo-server:10.8.211-debian
+```
+
+### Configuration through custom script (bash)
 
 ## Runtime SDK Variable
 

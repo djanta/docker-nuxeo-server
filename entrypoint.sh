@@ -81,6 +81,9 @@ if [ "$1" = 'nuxeoctl' ]; then
     # NUXEO INTERNAL PROPERTIES CONFIGURATION
     ######
 
+    # Copy the user defined nuxeo.conf template if defined ...
+    [ -f "/var/lib/nuxeo/nuxeo.conf" ] && cp "$NUXEO_CONF" "$NUXEO_CONF".bck && cp -v "/var/lib/nuxeo/nuxeo.conf" "$NUXEO_CONF"
+
     # Update the system timezone
     [ -n "$TIMEZONE" ] && echo "$TIMEZONE" > /etc/timezone || echo "" > /dev/null 2>&1
 
@@ -89,13 +92,6 @@ if [ "$1" = 'nuxeoctl' ]; then
 
     # Skip Nuxeo Install & Configuration the first time
     perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=${SKIP_WIZARD:-true}/g" "$NUXEO_CONF"
-#    [ -n "$SKIP_WIZARD" ] && perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=$SKIP_WIZARD/g" "$NUXEO_CONF" \
-#      || perl -p -i -e "s/^#?nuxeo.wizard.done=.*$/nuxeo.wizard.done=true/g" "$NUXEO_CONF"
-
-#    [ -d "$NUXEO_LOG" ] && perl -p -i -e "s/^#?nuxeo.log.dir=.*$/nuxeo.log.dir=\/${NUXEO_LOG#?}/g" "$NUXEO_CONF"
-#    [ -d "$NUXEO_RUN" ] && perl -p -i -e "s/^#?nuxeo.pid.dir=.*$/nuxeo.pid.dir=\/${NUXEO_RUN#?}/g" "$NUXEO_CONF"
-#    [ -d "$NUXEO_DATA" ] && perl -p -i -e "s/^#?nuxeo.data.dir=.*$/nuxeo.data.dir=\/${NUXEO_DATA#?}/g" "$NUXEO_CONF"
-#    [ -d "$NUXEO_TMP" ] && perl -p -i -e "s/^#?nuxeo.tmp.dir=.*$/nuxeo.tmp.dir=\/${NUXEO_TMP#?}/g" "$NUXEO_CONF"
 
     # Nuxeo connect token control
     [ -z "$NUXEO_CONNECT_TOKEN" ] && warn "Missing NUXEO_CONNECT_TOKEN variable."
@@ -130,7 +126,6 @@ if [ "$1" = 'nuxeoctl' ]; then
 
     if [ -d "$CONFIG_D" ]; then
       deploy=("$CONFIG_D")
-      #TMPD="/tmp/$(date -u +'%Y%m%dT_%H%M%SZ')"
       TMPD="/tmp/$(date -u +'%Y%m%d%H%M%S')"
       mkdir -pv "$TMPD"/config.d
 
@@ -149,12 +144,6 @@ if [ "$1" = 'nuxeoctl' ]; then
         # Copy all user defined config.d
         [ -d "$dir/config.d" ] && cp -Rv "$dir/config.d/*" "$TMPD/config.d/" || echo "" > /dev/null 2>&1
       done
-
-  #    # Copy user shared configuration ...
-  #    for file in "$CONFIGD/init.d"/*; do
-  #      debug "Copying init.d resource from $file -> "$TMPD"/config.d"
-  #      cp "$file" "$TMPD"/config.d/
-  #    done
 
       #info "Merging built-in config.d with user provided init.d"
       for file in /library/config.d/*; do
@@ -263,21 +252,6 @@ if [ -n "$NUXEO_TEMPLATE_INSTALL" ]; then
     perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${template}/g" "$NUXEO_CONF"
   done
 fi
-
-## From here we can re-run the background scripts ...
-#for background in "$SHARED_D"/init.d/*; do
-#  case $background in
-#    *.sh)
-#      if [ -x "$background" ]; then
-#        bash "$background" &
-#      else
-#        error "$background is not or has no executable permission"
-#      fi
-#    ;;
-#    *)
-#     warn "$0: ignoring unknown file: $background" ;;
-#  esac
-#done
 
 [ "$1" = 'nuxeoctl' ] && [ -n "$NUXEO_CTL_DEBUG" ] && exec "$@" "-d" "$NUXEO_CTL_DEBUG" || exec "$@"
 

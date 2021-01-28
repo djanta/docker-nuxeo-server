@@ -107,6 +107,7 @@ jobs:
 
           IMAGE_ID_CACHE=()
 
+          docker buildx prune -f -a --verbose
           for jdkver in "${JDK[@]}"; do \
             JDK_VERSION="$jdkver"; \
             for lts in "${LTS[@]}"; do \
@@ -133,12 +134,14 @@ jobs:
                   --build-arg BUILD_DISTRIB="$dist" \
                   --output "type=image,push=true" \
                   --tag djanta/nuxeo-server:"$FULL_TAG" \
-                  --file $(pwd)/dockerfiles/$dist/Dockerfile .
+                  --file $(pwd)/dockerfiles/$dist/Dockerfile . ;\
+
+                docker buildx prune -f -a --verbose;\
               done; \
             done; \
           done
 
-          echo ::set-output name=image_id_cache::${IMAGE_ID_CACHE}
+#          echo ::set-output name=image_id_cache::${IMAGE_ID_CACHE}
 
 #      - name: Inspect image
 ##        if: always() && github.event_name != 'pull_request'

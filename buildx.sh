@@ -51,7 +51,6 @@ for jdkver in "${JDK[@]}"; do
     for dist in "${DISTRIBUTIONS[@]}"; do
       FULL_TAG="$VERSION_TAG-$dist"
       docker buildx build \
-        --no-cache \
         --platform "$PLATFORM" \
         --build-arg BUILD_VERSION="$VERSION_TAG" \
         --build-arg BUILD_HASH=$(git rev-parse HEAD) \
@@ -61,8 +60,10 @@ for jdkver in "${JDK[@]}"; do
         --build-arg BUILD_NX_VERSION="$NUXEO_LTS" \
         --build-arg BUILD_DISTRIB="$dist" \
         --output "type=image,push=false" \
-        --tag "$FULL_TAG" \
+        --tag djanta/nuxeo-server:"$FULL_TAG" \
         --file $(pwd)/dockerfiles/$dist/Dockerfile ./
+
+      #docker buildx prune -f -a --verbose
     done
   done
 done
