@@ -122,9 +122,9 @@ This image has been built with the ability to start a new container with your ow
 ```shell
 docker run --rm -it --name nuxeo-server-10 -p 8080:8080 -e NUXEO_PACKAGES="nuxeo-template-rendering-samples ..." djanta/nuxeo-server:10.8.211-debian
 ```
-> Note: Eache image has been built with the following embedded packages: `nuxeo-web-ui, nuxeo-jsf-ui, nuxeo-dam, nuxeo-template-rendering, nuxeo-liveconnect`
+> Note: Eache image has been built with the following embedded packages: `nuxeo-web-ui, nuxeo-jsf-ui,nuxeo-dam,nuxeo-template-rendering,nuxeo-liveconnect`
 
-To facilitated the usage and the configuration of this custom `Nuxeo` container, you can also have a look at out preset `docker compose` and `k8s` configuration [at](https://github.com/djanta/docker-nuxeo-bundle) or use it as follow:
+To facilitated the usage and the configuration of this custom `Nuxeo` container, you can also have a look at out preset `docker compose` and `k8s` [configuration](https://github.com/djanta/docker-nuxeo-bundle) or use it as follow:
 
 ```
   # Check out the entire project to get default configuration files

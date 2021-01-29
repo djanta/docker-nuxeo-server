@@ -105,12 +105,26 @@ if [ "$1" = 'nuxeoctl' ]; then
     fi
 
     # Install hotfixes from nuxeo remote marketplace platform
-    [ -n "$NUXEO_CLID"  ] && [ "$INSTALL_HOTFIX" == "true" ] && nuxeoctl mp-hotfix --accept=true \
+    [ -f "$NUXEO_DATA"/instance.clid  ] && [ "$INSTALL_HOTFIX" == "true" ] && nuxeoctl mp-hotfix --accept=true \
       --relax=true > /dev/null 2>&1 || info "Hotfixes installation deactivated"
 
-    # Install packages if any given
-    [ -n "$NUXEO_PACKAGES" ] && nuxeoctl mp-install "$NUXEO_PACKAGES" --accept=true \
-      --relax=true > /dev/null 2>&1 || info "No package to be installed"
+    # Try to uninstall the given marketplace package.
+    NUXEO_PACKAGE_UNINSTALL=${NUXEO_PACKAGE_UNINSTALL:-""}
+    for package in $(echo "$NUXEO_PACKAGE_UNINSTALL" | tr "," "\n"); do
+      nuxeoctl mp-uninstall --accept=true --relax=true "$package" > /dev/null 2>&1
+    done
+
+    # Try to install the given marketplace package.
+    NUXEO_PACKAGE_INSTALL=${NUXEO_PACKAGE_INSTALL:-$(echo ${NUXEO_PACKAGES:-""})}
+    for package in $(echo "$NUXEO_PACKAGE_INSTALL" | tr "," "\n"); do
+      nuxeoctl mp-install --accept=true --relax=true "$package" > /dev/null 2>&1
+    done
+
+    # Try to install the given marketplace template.
+    NUXEO_TEMPLATE_INSTALL=${NUXEO_TEMPLATE_INSTALL:-$(echo ${NUXEO_TEMPLATES:-""})}
+    for template in $(echo "$NUXEO_TEMPLATE_UNINSTALL" | tr "," "\n"); do
+      perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${template}/g" "$NUXEO_CONF"
+    done
 
 #    if [ -n "$NUXEO_TRANSIENT_STORE" ]; then
 #      #removes transients stores if exists to allow symbolic link creation
@@ -127,7 +141,7 @@ if [ "$1" = 'nuxeoctl' ]; then
     if [ -d "$CONFIG_D" ]; then
       deploy=("$CONFIG_D")
       TMPD="/tmp/$(date -u +'%Y%m%d%H%M%S')"
-      mkdir -pv "$TMPD"/config.d
+      mkdir -pv "$TMPD"/config.d > /dev/null 2>&1
 
       # When user define a specific environment to use
       [ -n "$DEPLOY_ENV" ] && [ -d "$CONFIG_D/$DEPLOY_ENV" ] && info "Using user defined deployment environment: \
@@ -135,14 +149,14 @@ if [ "$1" = 'nuxeoctl' ]; then
 
       for dir in "${deploy[@]}"; do
         warn "Scanning ($dir) directory for deployment ..."
-        [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
+#        [ -f "$dir/nuxeo.conf" ] && warn "Overrride $NUXEO_CONF with $dir/nuxeo.conf" && cat "$dir/nuxeo.conf" > "$NUXEO_CONF"
         [ -f "$dir/license" ] && cat "$dir/license" >  "$NUXEO_DATA/instance.clid" || echo "" > /dev/null 2>&1
         [ -d "$dir/log" ] && cp -Rv "$dir/log/*" "$NUXEO_HOME/lib/" || log "Unchanged log configuration"
         [ -d "$dir/config" ] && cp -Rv "$dir/config/*" "$NUXEO_HOME/nxserver/config/" || echo "" > /dev/null 2>&1
         [ -d "$dir/templates" ] && cp -Rv "$dir/templates/*" "$NUXEO_HOME/templates/" || echo "" > /dev/null 2>&1
 
         # Copy all user defined config.d
-        [ -d "$dir/config.d" ] && cp -Rv "$dir/config.d/*" "$TMPD/config.d/" || echo "" > /dev/null 2>&1
+        [ -d "$dir/config.d" ] && cp -R "$dir/config.d/" "$TMPD/config.d/" > /dev/null 2>&1
       done
 
       #info "Merging built-in config.d with user provided init.d"
@@ -175,7 +189,6 @@ if [ "$1" = 'nuxeoctl' ]; then
           info "Scanning folder: $dir"
           # shellcheck disable=SC2045
           for package in $(ls "$dir"); do
-            info "Processing package: $dir/$package"
             case $package in
               *.zip)
                 debug "Installing package: ($package), from: $dir/$package"
@@ -230,27 +243,6 @@ EOF
     # Soure to export all preview variables ...
     source "$NUXEO_HOME"/configured
   fi
-fi
-
-# Always try to uninstall the given marketplace package.
-if [ -n "$NUXEO_PACKAGE_UNINSTALL" ]; then
-  for package in $(echo "$NUXEO_PACKAGE_UNINSTALL" | tr "," "\n"); do
-    nuxeoctl mp-uninstall --accept=true --relax=true "$package" > /dev/null 2>&1
-  done
-fi
-
-# Always try to install the given marketplace package.
-if [ -n "$NUXEO_PACKAGE_INSTALL" ]; then
-  for package in $(echo "$NUXEO_PACKAGE_INSTALL" | tr "," "\n"); do
-    nuxeoctl mp-install --accept=true --relax=true "$package" > /dev/null 2>&1
-  done
-fi
-
-# Always try to install the given marketplace template.
-if [ -n "$NUXEO_TEMPLATE_INSTALL" ]; then
-  for template in $(echo "$NUXEO_TEMPLATE_UNINSTALL" | tr "," "\n"); do
-    perl -p -i -e "s/^#?(nuxeo.templates=.*$)/\1,${template}/g" "$NUXEO_CONF"
-  done
 fi
 
 [ "$1" = 'nuxeoctl' ] && [ -n "$NUXEO_CTL_DEBUG" ] && exec "$@" "-d" "$NUXEO_CTL_DEBUG" || exec "$@"

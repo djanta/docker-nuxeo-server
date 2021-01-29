@@ -75,9 +75,12 @@ EOF
     perl -p -i -e "s/^#?elasticsearch.override.pageproviders=.*$/elasticsearch.override.pageproviders=${NUXEO_ES_PAGEPROVIDERS}/g" "$NUXEO_CONF"
   fi
 
-  if [ "$NUXEO_ES_PROTOCOL" == "https" ] && [ -f "$JAVA_TRUSTED_STORE" ]; then
-    echo "elasticsearch.restClient.truststore.path=$JAVA_TRUSTED_STORE" >> "$NUXEO_CONF"
-    echo "elasticsearch.restClient.truststore.password=${JAVA_TRUSTED_PWD:-changeit}" >> "$NUXEO_CONF"
-    echo "elasticsearch.restClient.truststore.type=${JAVA_TRUSTED_TYPE:-jks}" >> "$NUXEO_CONF"
+  TRUSTED_STORE=${ES_TRUSTED_STORE:-$(echo ${JAVA_TRUSTED_STORE:-""})}
+  if [ "$NUXEO_ES_PROTOCOL" == "https" ] && [ -f "$TRUSTED_STORE" ]; then
+    echo "elasticsearch.restClient.truststore.path=$TRUSTED_STORE" >> "$NUXEO_CONF"
+    echo "elasticsearch.restClient.truststore.password=${ES_TRUSTSTORE_PWD:-$(echo ${JAVA_TRUSTED_PWD:-"changeit"})}" >> "$NUXEO_CONF"
+    echo "elasticsearch.restClient.truststore.type=${ES_TRUSTSTORE_TYPE:-$(echo ${JAVA_TRUSTED_TYPE:-"jks"})}" >> "$NUXEO_CONF"
+#    echo "elasticsearch.restClient.truststore.password=${JAVA_TRUSTED_PWD:-changeit}" >> "$NUXEO_CONF"
+#    echo "elasticsearch.restClient.truststore.type=${JAVA_TRUSTED_TYPE:-jks}" >> "$NUXEO_CONF"
   fi
 fi

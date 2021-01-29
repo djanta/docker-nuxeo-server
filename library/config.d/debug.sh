@@ -40,5 +40,4 @@ if [ "$DEBUG" == "true" ]; then
   echo "org.nuxeo.rest.stack.enable=${DEBUG:-false}" >> "$NUXEO_CONF"
   echo "org.nuxeo.automation.trace=${DEBUG:-false}" >> "$NUXEO_CONF"
   echo "org.nuxeo.automation.trace.printable=${DEBUG:-false}" >> "$NUXEO_CONF"
-
 fi
