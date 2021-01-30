@@ -7,7 +7,7 @@
 [![pull badge](https://img.shields.io/docker/pulls/djanta/nuxeo-server.svg)](https://github.com/djanta/docker-nuxeo-server)
 [![Docker image](https://images.microbadger.com/badges/image/djanta/nuxeo-server.svg)](https://microbadger.com/images/djanta/nuxeo-server)
 
-> 1.0.0
+> 8.8.211, 9.8.211, 10.8.211
 
 ## Getting Started
 
@@ -112,7 +112,9 @@ For the purpose of this documentation, we'll be using the server `djanta/nuxeo-s
 > Note: As for now, this image is available for `Nuxeo` LTS (2019, 2017, 2015).
 
 ```shell
-docker run --rm -ti --name nuxeo-server-10 -p 8080:8080 djanta/nuxeo-server:10.8.211-debian
+docker run --rm -ti --name nuxeo-server-10 \
+  -p 8080:8080 \
+  djanta/nuxeo-server:10.8.211-debian
 ```
 
 #### Start a nuxeo with additional packages
@@ -120,7 +122,10 @@ docker run --rm -ti --name nuxeo-server-10 -p 8080:8080 djanta/nuxeo-server:10.8
 This image has been built with the ability to start a new container with your own external packages. To do so, just pass the list of those through the environment varialbe: `NUXEO_PACKAGES`
 
 ```shell
-docker run --rm -it --name nuxeo-server-10 -p 8080:8080 -e NUXEO_PACKAGES="nuxeo-template-rendering-samples ..." djanta/nuxeo-server:10.8.211-debian
+docker run --rm -it --name nuxeo-server-10 \
+  -p 8080:8080 \
+  -e NUXEO_PACKAGES="nuxeo-template-rendering-samples ..." \
+  djanta/nuxeo-server:10.8.211-debian
 ```
 > Note: Eache image has been built with the following embedded packages: `nuxeo-web-ui, nuxeo-jsf-ui,nuxeo-dam,nuxeo-template-rendering,nuxeo-liveconnect`
 
@@ -149,10 +154,58 @@ Your own defaut `nuxeo.conf` template can be contributed through a mount volume 
 #### Usage 
 
 ```shell
-docker run --rm -ti --name nuxeo-server-10 -p 8080:8080 -v $PWD/nuxeo.conf:/var/lib/nuxeo/nuxeo.conf:ro djanta/nuxeo-server:10.8.211-debian
+docker run --rm -it --name nuxeo-server-10 \
+  -p 8080:8080 \
+  -v $PWD/nuxeo.conf:/var/lib/nuxeo/nuxeo.conf:ro \
+  djanta/nuxeo-server:10.8.211-debian
 ```
 
 ### Configuration through custom script (bash)
+
+To run your custom configuration shell scripts, when starting a new container from any of our [Nuxeo image](https://hub.docker.com/r/djanta/nuxeo-server), 
+you can then map any of you script `*.sh` files from an external volume mounted at `/var/lib/nuxeo/config.d`.
+
+> Note: In some cases, for testing or sandbox purpose, you'd like to have a shared configuration script and some specific script for a specific environment. If so, we've got you covered by provisioning the following variable: `DEPLOY_ENV`
+
+#### Config.d (Folder Structure)
+
+```shell
+ls -ls $PWD/config.d
+total 200
+ 8 -rwxr-xr-x  1 stanislas  001-default.sh
+ 8 -rwxr-xr-x  1 stanislas  cache.sh
+ 8 -rwxr-xr-x  1 stanislas  certificate.sh
+ 8 -rwxr-xr-x  1 stanislas  database.sh
+ 0 drwxr-xr-x  24 stanislas dev                 # Placeholder for extended script for development environment
+ 0 drwxr-xr-x  24 stanislas sandbox             # Placeholder for extended script for sandbox environment
+ 0 drwxr-xr-x  24 stanislas staging             # Placeholder for extended script for staging environment
+ ...
+```
+
+#### Usage
+
+> Tip: Make sure to mount the volume `/var/lib/nuxeo/config.d` with read only as e.g: `:ro`
+
+```shell
+docker run --rm -it --name nuxeo-server-10 \
+  -p 8080:8080 \
+  -v ${NX_CONFIGD_PATH:-./data}/config.d:/var/lib/nuxeo/config.d:ro \
+  djanta/nuxeo-server:10.8.211-debian
+```
+or as follow to use an extended environmental script. e.g: `sandbox`
+
+```shell
+docker run --rm -it --name nuxeo-server-10 \
+  -p 8080:8080 \
+  - e DEPLOY_ENV="sandbox"
+  -v ${NX_CONFIGD_PATH:-./data}/config.d:/var/lib/nuxeo/config.d:ro \
+  djanta/nuxeo-server:10.8.211-debian
+```
+
+### External package deployment
+
+This image has a builtin feature that aim to provide a through for the end user to install any extra `bundle`, `hotfix` or `markertplace` dependency.
+
 
 ## Runtime SDK Variable
 
