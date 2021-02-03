@@ -2,10 +2,8 @@
 
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/djanta/docker-nuxeo-server)](https://github.com/djanta/docker-nuxeo-server)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/djanta/docker-nuxeo-server?color=brightgreen&include_prereleases)](https://github.com/djanta/docker-nuxeo-server)
-[![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/djanta/docker-server)](https://github.com/djanta/docker-nuxeo-server)
 [![stars badge](https://img.shields.io/docker/stars/djanta/nuxeo-server.svg)](https://github.com/djanta/docker-nuxeo-server)
 [![pull badge](https://img.shields.io/docker/pulls/djanta/nuxeo-server.svg)](https://github.com/djanta/docker-nuxeo-server)
-[![Docker image](https://images.microbadger.com/badges/image/djanta/nuxeo-server.svg)](https://microbadger.com/images/djanta/nuxeo-server)
 
 > 8.8.211, 9.8.211, 10.8.211
 
@@ -22,12 +20,11 @@ the framework to be functioning. Please do keep in mind that, this container wil
 
 First of all, base on many feedback inquiries we've got, I can stress enough that, this `SDK` image comes up with different `*nix` based distribution.
 As for today, we've not published any `windows` based distribution. In our team and for most of our clients, we mostly use this `OpenJDK` version, but you are free to
-choose your favorite distribution (as long as you're able to manage distribution specific problems without help from
-US).
+choose your favorite distribution (as long as you're able to manage specific distribution problems without help from us).
 
 ### Prerequisities
 
-In order to run this container you'll need docker installed.
+In order to run this container, you'll need Docker installed.
 
 * [Windows](https://docs.docker.com/windows/started)
 * [OS X](https://docs.docker.com/mac/started/)
@@ -43,8 +40,8 @@ All our customized nuxeo container listed here are built from [parent SDK contai
 
 | Platform                     | Versions            | 
 | ----------------------------: | ------------------- |
-| Debian                       | nuxeo-sdk{{denian}}  |
-| Ubuntu                       | nuxeo-sdk{{ubuntu}}  |
+| Debian                       | nuxeo-sdk-{{version}}-denian  |
+| Ubuntu                       | nuxeo-sdk-{{version}}-ubuntu  |
 | CentOS                       | -                    |
 | Oracle Linux7                | -                    | 
 
@@ -172,13 +169,13 @@ you can then map any of you script `*.sh` files from an external volume mounted 
 ```shell
 ls -ls $PWD/config.d
 total 200
- 8 -rwxr-xr-x  1 stanislas  001-default.sh
- 8 -rwxr-xr-x  1 stanislas  cache.sh
- 8 -rwxr-xr-x  1 stanislas  certificate.sh
- 8 -rwxr-xr-x  1 stanislas  database.sh
- 0 drwxr-xr-x  24 stanislas dev                 # Placeholder for extended script for development environment
- 0 drwxr-xr-x  24 stanislas sandbox             # Placeholder for extended script for sandbox environment
- 0 drwxr-xr-x  24 stanislas staging             # Placeholder for extended script for staging environment
+ 8 -rwxr-xr-x  1  stanislas  001-default.sh
+ 8 -rwxr-xr-x  1  stanislas  cache.sh
+ 8 -rwxr-xr-x  1  stanislas  certificate.sh
+ 8 -rwxr-xr-x  1  stanislas  database.sh
+ 0 drwxr-xr-x  24 stanislas  dev                 # Placeholder for extended script for development environment
+ 0 drwxr-xr-x  24 stanislas  sandbox             # Placeholder for extended script for sandbox environment
+ 0 drwxr-xr-x  24 stanislas  staging             # Placeholder for extended script for staging environment
  ...
 ```
 
@@ -204,7 +201,10 @@ docker run --rm -it --name nuxeo-server-10 \
 
 ### External package deployment
 
-This image has a builtin feature that aim to provide a through for the end user to install any extra `bundle`, `hotfix` or `markertplace` dependency.
+This image has a builtin feature that aim to provide a way through for the end user to install any extra `markertplace-addon`, `hotfixes` or `custom package` dependency.
+
+As we spoke about above, once you mount the `/var/lib/nuxeo/config.d`, any `jar file` or `marketplace package (.zip)` found in either sub directory `package.d/hotfixes` or `package.d/addons` will automatically installed.
+
 
 
 ## Runtime SDK Variable
@@ -250,7 +250,7 @@ our code of conduct, and the process for submitting pull requests to us.
 |                |                                                                  |
 | -------------- | ---------------------------------------------------------------- |
 | **Author:**    | [Koffi Stanislas ASSOUTOVI](https://github.com/stanislaska)      |
-| **License:**   | [The MIT License (MIT)](https://github.com/djanta/docker-nuxeo-server/blob/master/LICENSE)                                            |
+| **License:**   | [The MIT License (MIT)](https://github.com/djanta/docker-nuxeo-server/blob/master/LICENSE) |
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

@@ -27,9 +27,19 @@ fi
 argv0=$(echo "$0" | sed -e 's,\\,/,g')
 basedir=$(dirname "$(readlink "$0" || echo "$argv0")")
 
-case "$(uname -s)" in
-  Linux) basedir=$(dirname "$(readlink -f "$0" || echo "$argv0")");;
-  *CYGWIN*) basedir=`cygpath -w "$basedir"`;;
+#case "$(uname -s)" in
+#  Linux) basedir=$(dirname "$(readlink -f "$0" || echo "$argv0")");;
+#  *CYGWIN*) basedir=`cygpath -w "$basedir"`;;
+#esac
+
+# Current uname in lowercase form
+uname=$(echo $(uname -s) | tr '[A-Z]' '[a-z]')
+
+# shellcheck disable=SC2006
+case "$uname" in
+  linux) basedir=$(dirname "$(readlink -f "$0" || echo "$argv0")");;
+  *cygwin*) basedir=`cygpath -w "$basedir"`;;
+  darwin) basedir=$(dirname "$(readlink "$0" || echo "$argv0")");;
 esac
 
 BASE=`dirname ${basedir}`
