@@ -194,7 +194,7 @@ or as follow to use an extended environmental script. e.g: `sandbox`
 ```shell
 docker run --rm -it --name nuxeo-server-10 \
   -p 8080:8080 \
-  -e DEPLOY_ENV="sandbox"
+  -e DEPLOY_ENV="sandbox" \
   -v ${NX_CONFIGD_PATH:-./data}/config.d:/var/lib/nuxeo/config.d:ro \
   djanta/nuxeo-server:10.8.211-debian
 ```
