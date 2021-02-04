@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-name: LTS Master
+name: LTS
 
 # On push event ...
 on:

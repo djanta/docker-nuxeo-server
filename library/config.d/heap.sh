@@ -15,10 +15,12 @@
 # GNU General Public License at <http://www.gnu.org/licenses/> for more details.
 # ---------------------------------------------------------------------------
 
-case "$(uname -s)" in
-  Linux | *CYGWIN*) TOTAL_MEMORY_INKB=$(awk '/MemTotal/ {print $2}' /proc/meminfo);;
-#  *CYGWIN*) TOTAL_MEMORY_INKB=$(awk '/MemTotal/ {print $2}' /proc/meminfo);;
-  Darwin) TOTAL_MEMORY_INKB=$(sysctl -n hw.memsize);;
+# Current uname in lowercase form
+uname=$(echo $(uname -s) | tr '[A-Z]' '[a-z]')
+case "$uname" in
+  linux | *cygwin*) TOTAL_MEMORY_INKB=$(awk '/MemTotal/ {print $2}' /proc/meminfo);;
+#  *cygwin*) TOTAL_MEMORY_INKB=$(awk '/MemTotal/ {print $2}' /proc/meminfo);;
+  darwin) TOTAL_MEMORY_INKB=$(sysctl -n hw.memsize);;
 esac
 
 # Default jvm exported variable
@@ -33,8 +35,8 @@ JVM_FILE="jvm.options"
 JAVA_MAX_MEM_RATIO=${JAVA_MAX_MEM_RATIO:-$(echo "${CONTAINER_HEAP_PERCENT:-0.5}" "100" | awk '{ printf "%d", $1 * $2 }')}
 JAVA_INITIAL_MEM_RATIO=${JAVA_INITIAL_MEM_RATIO:-${INITIAL_HEAP_PERCENT:+$(echo "${INITIAL_HEAP_PERCENT}" "100" | awk '{ printf "%d", $1 * $2 }')}}
 
-#echo "JAVA_MAX_MEM_RATIO: $JAVA_MAX_MEM_RATIO"
-#echo "JAVA_INITIAL_MEM_RATIO: $JAVA_INITIAL_MEM_RATIO"
+echo "JAVA_MAX_MEM_RATIO: $JAVA_MAX_MEM_RATIO"
+echo "JAVA_INITIAL_MEM_RATIO: $JAVA_INITIAL_MEM_RATIO"
 
 #TOTAL_MEMORY_INKB="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
 #memoryInKb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
@@ -54,7 +56,7 @@ function get_heap_size {
 
 #echo $(sed -i -r "s/#*-Xmx[0-9]\+g/-Xmx${heapSize}g/g" "$NUXEO_CONF")
 #
-#echo "===> Memory heap size: $heapSize"
+echo "===> Memory heap size: $heapSize"
 #
 #cat "$NUXEO_CONF" | grep "JAVA_OPTS"
 

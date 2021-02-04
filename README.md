@@ -34,14 +34,14 @@ _*After, you need to set up following tools. Just go on official websites to see
 
 ### Build from
 
-All our customized nuxeo container listed here are built from [parent SDK container](https://hub.docker.com/repository/docker/djanta/docker-server/tags?page=1&ordering=last_updated)
+All our customized nuxeo container listed here are built from [parent SDK container](https://hub.docker.com/r/djanta/nuxeo-sdk/tags?page=1&ordering=last_updated)
 
 ## Supported Distribution
 
 | Platform                     | Versions            | 
 | ----------------------------: | ------------------- |
-| Debian                       | nuxeo-sdk-{{version}}-denian  |
-| Ubuntu                       | nuxeo-sdk-{{version}}-ubuntu  |
+| Debian                       | nuxeo-sdk:{{version}}-denian  |
+| Ubuntu                       | nuxeo-sdk:{{version}}-ubuntu  |
 | CentOS                       | -                    |
 | Oracle Linux7                | -                    | 
 
@@ -67,10 +67,10 @@ provisioned distribtion architecture, please visit [docker hub](https://hub.dock
 As requested with the request this bundle can be run within the command bellow:
 
 ```sh
-docker pull djanta/docker-server:{{version}}-{{distribution}}
+docker pull djanta/nuxeo-server:{{version}}-{{distribution}}
 
 # Example for the heaviest version 
-docker pull djanta/docker-server:10.8.211-debian
+docker pull djanta/nuxeo-server:10.8.211-debian
 ```
 
 ## Where from?
@@ -78,10 +78,10 @@ As we're making all our containers to be largely available and easier to use, we
 
 |                           |                           |      |
 | -------------------------:|:------------------------- |:----:|
-| **Docker Registry**       | [docker hub](https://hub.docker.com/r/djanta/nuxeo-server/tags?page=1&ordering=last_updated)             | √    |
-| **Github Registry**       | [Github]()     | X    |
-| **Openshift Registry**    |                           | X    |
-| **Amazon Registry**       |                           | X    |
+| **Docker Registry**       | [docker hub](https://hub.docker.com/r/djanta/nuxeo-server/tags?page=1&ordering=last_updated) | √ |
+| **Github Registry**       | [Github]()     | X |
+| **Openshift Registry**    |                | X |
+| **Amazon Registry**       |                | X |
 
 ## Usage
 
@@ -92,15 +92,15 @@ docker run it --rm --name nuxeo-server{{version}} -p 8080:8080 djanta/nuxeo-serv
 ```
 
 When you create and start a new container `djanta/nuxeo-server:{{version}}`, on the fly, Keep in mind that, the default configuration is bare-bones and has no content.
-Therefore, the container will be expposed through the port `8080` and support an embedded database (H2) only.
+Therefore, the container will be exposed through the port `8080` and support an embedded database (H2) only.
 
 > TIP: By default, the server will start in dev mode. Please consider using `NUXEO_DEV_MODE` as part of your container environment and set it to `false`
 
-If you are new to Nuxeo and want to see the demo content and template samples data and documents that are used in the [Documentation](https://doc.nuxeo.com) and tutorials on [Nuxeo University](https://university.nuxeo.com), 
-concider using the following environment variable`NUXEO_PACKAGES` to pass all desired package you witch to install. You might also consider using deploying those package through the [config.d](#config.d) volume or your [package.d](#package.d)
+If you are new to Nuxeo and want to see the demo content and template samples data and documents that are used in the [Documentation](https://doc.nuxeo.com) and tutorials on [Nuxeo University](https://university.nuxeo.com),
+consider using the following environment variable`NUXEO_PACKAGES` to pass all desired package you witch to install. You might also consider using deploying those package through the [config.d](#config.d) volume or your [package.d](#package.d)
 
-> TIP: Once the container started, open your browser to http://localhost:8080/ and log in with Administrator/Administrator if you have not deploy any specific user configuration contribution. 
-Considere also set the environment `SKIP_WIZARD` to `true` or `false` whether you want to bypass the configuration wizard.
+> TIP: Once the container started, open your browser to http://localhost:8080/ and log in with Administrator/Administrator if you have not to deploy any specific user configuration contribution.
+consider also set the environment `SKIP_WIZARD` to `true` or `false` whether you want to bypass the configuration wizard.
 
 ### Getting Started (dev or production)
 
@@ -201,13 +201,19 @@ docker run --rm -it --name nuxeo-server-10 \
 
 ### External package deployment
 
-This image has a builtin feature that aim to provide a way through for the end user to install any extra `markertplace-addon`, `hotfixes` or `custom package` dependency.
+This image has a builtin feature that aim to provide a way through for the end user to install any extra `marketplace-addon`, `hotfixes` or `custom package` dependency.
 
-As we spoke about above, once you mount the `/var/lib/nuxeo/config.d`, any `jar file` or `marketplace package (.zip)` found in either sub directory `package.d/hotfixes` or `package.d/addons` will automatically installed.
+As seen above, once you mount the `/var/lib/nuxeo/config.d`, any `file (.jar)` or `marketplace package(.zip)` found in either sub directory `package.d/hotfixes` or `package.d/addons` will automatically installed.
 
-
+> TIP: Note that, all mounted external `jar` resource or `bundles` are installed in the following order `package.d/hotfixes/*` then `package.d/addons/*`. This's due the addon(s) dependency management
 
 ## Runtime SDK Variable
+
+### Debugging
+
+To enable and start the container in debug mode, either `DEBUG` or `NUXEO_DEV_MODE` environment must be set to `true`. For further information about which `Nuxeo` 
+options are enabled in debug mode, you can refer to our provisionned debug [script](https://github.com/djanta/docker-nuxeo-server/blob/master/library/config.d/debug.sh)
+
 
 ### Imagemagick
 

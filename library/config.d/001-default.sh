@@ -34,7 +34,7 @@ echo "org.nuxeo.prod=${NUXEO_PROD_MODE:-false}" >> "$NUXEO_CONF"
 # Generic configuration setup
 echo "org.nuxeo.connect.server.reachable=${NUXEO_CONNECT_OFFILINE:-false}" >> "$NUXEO_CONF"
 echo "org.nuxeo.ecm.product.name=${NUXEO_PRODUCT_NAME:-"DJANTA.IO Customized Nuxeo Server"}" >> "$NUXEO_CONF"
-echo "org.nuxeo.ecm.instance.description=${NUXEO_SERVER_DESC:-"DJANTA.IO Customized Nuxeo Server"}" >> "$NUXEO_CONF"
+echo "org.nuxeo.ecm.instance.description=${NUXEO_SERVER_DESC:-"<a href=\"https://djanta.io\">DJANTA.IO</a> Customized Nuxeo Server"}" >> "$NUXEO_CONF"
 echo "org.nuxeo.ecm.instance.name=${NUXEO_SERVER_NAME:-"DJANTA.IO Nuxeo Server"}" >> "$NUXEO_CONF"
 echo "org.nuxeo.ecm.product.version=${NUXEO_PRODUCT_VERSION:-$(echo ${NUXEO_VERSION:-""})}" >> "$NUXEO_CONF"
 
